@@ -1,0 +1,21 @@
+{
+  "name": "xiaozhong-dianping",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "server": "node server.js"
+  },
+  "keywords": [],
+  "author": "ChiyukiRuon",
+  "license": "MIT",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.3",
+    "node-rsa": "^1.1.1",
+    "xss": "^1.0.15"
+  }
+}
