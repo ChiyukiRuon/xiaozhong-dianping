@@ -1,11 +1,34 @@
 const db = require('../utils/db')
-const logger = require('../utils/logger')
+
+/**
+ * 使用用户名或昵称搜索用户信息
+ *
+ * @param {String} searchTerm 搜索关键词
+ * @param {Number} page 当前页数，默认为1
+ * @param {Number} limit 每页条数，默认为10
+ * @return {Promise<Array>} 查询结果
+ * @author ChiyukiRuon
+ * */
+const searchUsers = async (searchTerm, page = 1, limit = 10) => {
+    const offset = (page - 1) * limit
+
+    const sql = `
+        SELECT uid, username, nickname, avatar, intro FROM user
+        WHERE (username LIKE CONCAT('%', ?, '%') OR nickname LIKE CONCAT('%', ?, '%'))
+        AND status = 0 AND role = 'normal'
+        LIMIT ? OFFSET ?
+    `
+
+    return await db.query(sql, [searchTerm, searchTerm, limit, offset])
+}
+
 
 /**
  * 根据用户ID查找用户信息
  *
  * @param {Number} uid 用户ID
  * @return {Promise<Array>}
+ * @author ChiyukiRuon
  * */
 const getUserById = async (uid) => {
     const sql = 'SELECT * FROM user WHERE uid = ?'
@@ -42,6 +65,7 @@ const registerUser = async (username, hashedPassword) => {
  *
  * @param {Object} userInfo 用户信息
  * @return {Promise<void>}
+ * @author ChiyukiRuon
  */
 const updateUser = async (userInfo) => {
     const {
@@ -52,8 +76,7 @@ const updateUser = async (userInfo) => {
         avatar,
         intro,
         phone,
-        email,
-        remark
+        email
     } = userInfo
 
     const fields = []
@@ -86,10 +109,6 @@ const updateUser = async (userInfo) => {
     if (email) {
         fields.push('email = ?')
         values.push(email)
-    }
-    if (remark) {
-        fields.push('remark = ?')
-        values.push(remark)
     }
 
     if (fields.length === 0) {
@@ -189,7 +208,7 @@ const updateReview = async (params) => {
     }
 
     if (fields.length === 0) {
-        return
+        return []
     }
 
     values.push(id)
@@ -202,6 +221,7 @@ const updateReview = async (params) => {
 
 
 module.exports = {
+    searchUsers,
     getUserById,
     getUserByUsername,
     registerUser,

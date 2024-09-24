@@ -21,6 +21,11 @@ const authInterceptor = (req, res, next) => {
 
         if (ROLE_PATH[decoded.role] && req.originalUrl.startsWith(ROLE_PATH[decoded.role])) {
             req.userInfo = decoded
+
+            if (req.userInfo.permission) {
+                req.userInfo.permission = req.userInfo.permission.split('+')
+            }
+
             next()
         } else {
             return res.error('无效的 Token', 403)

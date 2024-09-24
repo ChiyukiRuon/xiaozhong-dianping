@@ -9,6 +9,32 @@ const {hashPassword} = require("../utils/bcrypt");
 const jwt = require("../utils/jwt");
 const xss = require("xss");
 
+// 搜索用户
+router.get('/search', async (req, res) => {
+    const params = req.getParams()
+
+    if (params.term) params.term = xss(params.term.trim())
+    params.page = parseInt(params.page) || 1
+    params.size = parseInt(params.size) || Math.min(300, parseInt(params.size))
+
+    if (!params.term) {
+        return res.error('请输入搜索内容', 400)
+    }
+    if (params.page <= 0 || params.size <= 0) {
+        return res.error('非法的分页参数', 400)
+    }
+
+    try {
+        const userList = await userService.searchUsers(params.term, params.page, params.size)
+        const total = userList.length
+
+        return res.ok({ userList: userList, total: total, current: params.page, size: params.size }, '获取成功')
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
 router.get('/review', authInterceptor, async (req, res) => {
     const params = req.getParams()
     const userInfo = req.userInfo

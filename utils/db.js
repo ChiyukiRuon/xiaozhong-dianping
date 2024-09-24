@@ -23,7 +23,7 @@ const pool = mysql.createPool(dbConfig)
  * @returns {Promise} 查询结果
  * @author ChiyukiRuon
  * */
-const query = async (sql, params) => {
+const query = async (sql, params = []) => {
     try {
         const [results, ] = await pool.execute(sql, params)
         return results
