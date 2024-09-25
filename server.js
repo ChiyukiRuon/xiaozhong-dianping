@@ -27,6 +27,7 @@ app.use(requestInterceptor)
 
 app.use('/api', route)
 
+// 获取公钥
 app.get('/api/key', async (req, res) => {
     if (publicKey !== '') {
         res.ok({key: publicKey})
@@ -35,7 +36,8 @@ app.get('/api/key', async (req, res) => {
     }
 })
 
-app.post('/api/login', async (req, res) => {
+// 验证用户
+app.post('/api/auth', async (req, res) => {
     const params = req.getParams()
     try {
         const plainPassword = decryptData(params.password)
