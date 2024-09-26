@@ -27,6 +27,26 @@ const unverifiedUserList = (userInfoList) => {
     })
 }
 
+/**
+ * 生成随机昵称
+ *
+ * @param {String} baseStr 基础字符串
+ * @param {Number} length 生成长度
+ * @return {String} 生成的随机昵称
+ */
+const generateRandomName = (baseStr, length) => {
+    let result = ''
+    const baseLength = baseStr.length
+
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * baseLength)
+        result += baseStr[randomIndex]
+    }
+
+    return `用户 ${result}`
+}
+
 module.exports = {
-    unverifiedUserList
+    unverifiedUserList,
+    generateRandomName
 }

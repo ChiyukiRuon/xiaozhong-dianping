@@ -8,6 +8,8 @@ const {isUsernameValid, isPasswordValid} = require("../utils/valid");
 const {hashPassword} = require("../utils/bcrypt");
 const {decryptData} = require("../utils/rsa");
 const xss = require("xss");
+const {generateRandomName} = require("../utils/formatter");
+const {verifyUser} = require("../services/adminService");
 
 // 获取管理员列表
 router.get('/list', authInterceptor, async (req, res) => {
@@ -263,31 +265,112 @@ router.post('/user/verify', authInterceptor, async (req, res) => {
         return res.error('没有权限', 403)
     }
 
-    try {
-        const user = await adminService.verifyUser(params.id, params.uid, params.approve)
-        const {password, ...userInfo} = user[0]
+    const verifyDetail = await adminService.getUnverifiedUserById(params.id)
 
-        return res.ok({ userInfo: userInfo }, '操作成功')
+    if (!verifyDetail || verifyDetail.length === 0 || verifyDetail[0].type !== 'user') {
+        return res.error('记录不存在', 404)
+    }
+    if (params.uid !== verifyDetail[0].uid) {
+        return res.error('非法的操作', 400)
+    }
+    if (params.approve !== 0 && params.approve !== 3) {
+        return res.error('非法的参数', 400)
+    }
+    try {
+        if (params.approve === 3) {
+            switch (verifyDetail[0].detail) {
+                case 'nickname':
+                    await userService.updateUser({uid: params.uid, nickname: generateRandomName(verifyDetail[0].username, 8)})
+                    await adminService.verifyUser(params.id, params.approve)
+                    return res.ok({}, '操作成功')
+                case 'avatar':
+                    await userService.updateUser({uid: params.uid, avatar: 'http://cdn.dianping.chiyukiruon.top/avatar.jpg'})
+                    await adminService.verifyUser(params.id, params.approve)
+                    return res.ok({}, '操作成功')
+                case 'intro':
+                    await userService.updateUser({uid: params.uid, intro: '这个人很懒，什么都没有写'})
+                    await adminService.verifyUser(params.id, params.approve)
+                    return res.ok({}, '操作成功')
+                default:
+                    return res.error('服务器内部错误', 500)
+            }
+        } else if (params.approve === 0) {
+            await adminService.verifyUser(params.id, params.approve)
+            return res.ok({}, '操作成功')
+        }
     } catch (e) {
         logger.error(e)
         return res.error('服务器内部错误', 500)
     }
 })
 
+// 审核商家
+router.post('/merchant/verify', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+    const userInfo = req.userInfo
+
+    if (!userInfo.permission.includes('merchant') && !userInfo.permission.includes('super')) {
+        return res.error('没有权限', 403)
+    }
+
+    const verifyDetail = await adminService.getUnverifiedUserById(params.id)
+
+    if (!verifyDetail || verifyDetail.length === 0 || verifyDetail[0].type !== 'merchant') {
+        return res.error('记录不存在', 404)
+    }
+    if (params.approve !== 0 && params.approve !== 3) {
+        return res.error('非法的参数', 400)
+    }
+
+    try {
+        if (params.approve === 3) {
+            switch (verifyDetail[0].detail) {
+                case 'register':
+                    await userService.updateUser({uid: params.uid, status: 4})
+                    await adminService.verifyUser(params.id, params.approve)
+                    return res.ok({}, '操作成功')
+                default:
+                    await adminService.verifyUser(params.id, params.approve)
+                    return res.ok({}, '操作成功')
+            }
+        } else {
+            switch (verifyDetail[0].detail) {
+                case 'register':
+                    await adminService.verifyMerchant(params.id, params.approve, { uid: params.uid, status: 0})
+                    return res.ok({}, '操作成功')
+                default:
+                    await adminService.verifyMerchant(params.id, params.approve, { uid: params.uid, status: 0})
+                    return res.ok({}, '操作成功')
+            }
+        }
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+
+})
+
 // 封禁用户
 router.post('/user/ban', authInterceptor, async (req, res) => {
     const params = req.getParams()
     const userInfo = req.userInfo
+    const usrList = await userService.getUserById(params.uid)
 
-    if (!userInfo.permission.includes('user') && !userInfo.permission.includes('super')) {
-        return res.error('没有权限', 403)
+    if (!usrList || usrList.length === 0) {
+        return res.error('用户不存在', 404)
+    }
+    if (params.type !== 'user' && params.type !== 'merchant') {
+        return res.error('非法的参数', 400)
     }
 
     try {
-        const user = await adminService.banUser(params.uid)
-        const {password, ...userInfo} = user[0]
+        const result = await adminService.banUser(params.uid, params.type)
 
-        return res.ok({ userInfo: userInfo }, '封禁成功')
+        if (result) {
+            return res.ok({}, '操作成功')
+        } else {
+            return res.error('服务器内部错误', 500)
+        }
     } catch (e) {
         logger.error(e)
         return res.error('服务器内部错误', 500)

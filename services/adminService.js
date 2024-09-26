@@ -1,4 +1,6 @@
 const db = require('../utils/db')
+const logger = require("../utils/logger");
+const {pool} = require("../utils/db");
 
 /**
  * 获取权限列表
@@ -178,38 +180,125 @@ const getUnverifiedUserById = async (id) => {
  * 审核用户
  *
  * @param {Number} id 记录ID
- * @param {Number} approve 审核状态
- * @return {Promise<Array>} 审核结果
+ * @param {Number} approve 审核状态, 0为通过，3为拒绝
+ * @return {Promise<void>}
  * @author ChiyukiRuon
  * */
 const verifyUser = async (id, approve) => {
-    const connection = await db.getConnection()
+    const sql = `UPDATE verification SET status = ? WHERE id = ?`
+
+    return await db.query(sql, [approve, id])
+}
+
+/**
+ * 审核商家
+ *
+ * @param {Number} id 记录ID
+ * @param {Number} approve 审核状态, 0为通过，3为拒绝
+ * @param {Object} info 更新的信息
+ * @return {Promise<boolean>}
+ * @author ChiyukiRuon
+ * */
+const verifyMerchant = async (id, approve, info) => {
+    const connection = await pool.getConnection()
+    const {
+        uid,
+        nickname,
+        avatar,
+        intro,
+        status,
+    } = info
+    const fields = []
+    const values = []
+
+    if (!uid) return false
+    if (approve === 3) {
+        try {
+            await connection.beginTransaction()
+
+            const sql1 = 'UPDATE user SET status = 4 WHERE uid = ?'
+            await connection.query(sql1, [uid])
+
+            const sql2 = 'UPDATE verification SET status = 3 WHERE source_id = ? AND type = "merchant"'
+            await connection.query(sql2, [uid])
+
+            await connection.commit()
+            return true
+        } catch (error) {
+            logger.error('Transaction failed:', error)
+            await connection.rollback()
+            return false
+        } finally {
+            connection.release()
+        }
+    } else {
+        if (nickname) {
+            fields.push('nickname = ?')
+            values.push(nickname)
+        }
+        if (avatar) {
+            fields.push('avatar = ?')
+            values.push(avatar)
+        }
+        if (intro) {
+            fields.push('intro = ?')
+            values.push(intro)
+        }
+        if (status) {
+            fields.push('status = ?')
+            values.push(status)
+        }
+
+        try {
+            await connection.beginTransaction()
+
+            const sql1 = `UPDATE user SET ${fields.join(', ')} WHERE uid = ?`
+            await connection.query(sql1, [...values, uid])
+
+            const sql2 = 'UPDATE verification SET status = 0 WHERE source_id = ? AND type = "merchant"'
+            await connection.query(sql2, [uid])
+
+            await connection.commit()
+            return true
+        } catch (error) {
+            logger.error('Transaction failed:', error)
+            await connection.rollback()
+            return false
+        } finally {
+            connection.release()
+        }
+    }
+}
+
+/**
+ * 封禁用户
+ *
+ * @param {Number} uid 用户ID
+ * @param {String} type 用户类型,user or merchant
+ * @return {Promise<boolean>} 封禁结果
+ * @author ChiyukiRuon
+ * */
+const banUser = async (uid, type) => {
+    const connection = await pool.getConnection()
 
     try {
-        // 开始事务
         await connection.beginTransaction()
 
-        // 更新表1
-        const sql1 = 'UPDATE verification SET status = ? WHERE id = ?'
-        await connection.query(sql1, [status, id])
+        const sql1 = 'UPDATE user SET status = 2 WHERE uid = ?'
+        await connection.query(sql1, [uid])
 
-        // 更新表2
-        const sql2 = 'UPDATE user SET column2 = ? WHERE id = ?'
-        await connection.query(sql2, [data.value2, data.id2])
+        const sql2 = 'UPDATE verification SET status = 3 WHERE source_id = ? AND type = ?'
+        await connection.query(sql2, [uid, type])
 
-        // 如果两张表都更新成功，提交事务
         await connection.commit()
-        console.log('Transaction committed successfully')
+        return true
     } catch (error) {
-        // 如果出错，回滚事务
+        logger.error('Transaction failed:', error)
         await connection.rollback()
-        console.error('Transaction rolled back due to error:', error)
+        return false
     } finally {
-        // 关闭连接
-        await connection.release()
+        connection.release()
     }
-
-    return await db.query(sql, [id])
 }
 
 module.exports = {
@@ -220,5 +309,9 @@ module.exports = {
     addAdmin,
     getUnverifiedUserList,
     getUnverifiedMerchantList,
-    getUnverifiedContentList
+    getUnverifiedContentList,
+    getUnverifiedUserById,
+    verifyUser,
+    verifyMerchant,
+    banUser
 }
