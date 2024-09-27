@@ -45,9 +45,22 @@ const isEmailValid = (email) => {
     return emailRegex.test(email)
 }
 
+/**
+ * 检查图片文件是否合法
+ *
+ * @param {Object} image 文件对象
+ * @return {boolean} 返回 true 表示图片合法，false 表示不合法
+ * */
+const isImageValid = (image) => {
+    // 检查文件类型是否为图片
+    const imageTypes = ['image/jpeg', 'image/png']
+    return imageTypes.includes(image.mimetype)
+}
+
 module.exports = {
     isUsernameValid,
     isPasswordValid,
     isPhoneNumberValid,
-    isEmailValid
+    isEmailValid,
+    isImageValid
 }

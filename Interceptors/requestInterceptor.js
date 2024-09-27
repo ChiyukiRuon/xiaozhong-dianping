@@ -11,7 +11,25 @@ const requestInterceptor = (req, res, next) => {
      * */
     req.getParams = function () {
         return { ...req.query, ...req.body, ...req.params }
-    };
+    }
+
+    /**
+     * 获取文件
+     *
+     * @return {Array}
+     * @author ChiyukiRuon
+     * */
+    req.getFile = function () {
+        if (!req.files) {
+            return null
+        } else {
+            if (!req.files.file.length) {
+                return [req.files.file]
+            } else {
+                return req.files.file
+            }
+        }
+    }
 
     /**
      * 统一请求成功返回格式

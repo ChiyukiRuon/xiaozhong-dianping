@@ -1,4 +1,5 @@
 const express = require('express')
+const fileUpload = require('express-fileupload');
 const app = express()
 const fs = require('fs')
 const route = require('./routes')
@@ -9,6 +10,7 @@ const generateKeyPair = require('./utils/rsa')
 const {decryptData} = require("./utils/rsa");
 const {comparePassword} = require("./utils/bcrypt");
 const jwt = require("./utils/jwt");
+const {getPagePathByRole} = require("./utils/common");
 
 const PORT = process.env.PORT || 3000
 
@@ -21,6 +23,9 @@ if (!fs.existsSync('./keys/public.key') || !fs.existsSync('./keys/private.key'))
     logger.info('Key Pair Exists')
 }
 
+app.use(fileUpload({
+    createParentPath: true
+}));
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(requestInterceptor)
@@ -56,7 +61,7 @@ app.post('/api/auth', async (req, res) => {
             const payload = (({ uid, username, role, permission, status }) => ({ uid, username, role, permission, status }))(user[0])
             const token = jwt.signToken(payload)
 
-            return res.ok({ token: token, user: userInfo}, '登录成功')
+            return res.ok({ token: token, user: userInfo, route: getPagePathByRole(userInfo.role) }, '登录成功')
         }
     } catch (e) {
         logger.error(e)
