@@ -9,7 +9,7 @@ const {hashPassword} = require("../utils/bcrypt");
 const jwt = require("../utils/jwt");
 const xss = require("xss");
 const {uploadFile} = require("../utils/qiniu");
-const {generateRandomName, renameFile} = require("../utils/formatter");
+const {renameFile} = require("../utils/formatter");
 
 // 搜索用户
 router.get('/search', async (req, res) => {
@@ -84,7 +84,7 @@ router.post('/register', async (req, res) => {
             await userService.registerUser(params.username, hashedPassword)
         }
 
-        const user = await userService.login(params.username)
+        const user = await userService.getUserByUsername(params.username)
 
         const { password, ...userInfo } = user[0]
         const payload = (({ uid, username, role, permission, status }) => ({ uid, username, role, permission, status }))(user[0])
@@ -168,7 +168,7 @@ router.post('/review', authInterceptor, async (req, res) => {
         if (reviewInfo[0].author_id !== userInfo.uid) {
             return res.error('未授权的操作', 403)
         }
-        if (reviewInfo[0].status !== 0 || reviewInfo[0].status !== 3) {
+        if (reviewInfo[0].status !== 0 && reviewInfo[0].status !== 3) {
             return res.error('当前状态禁止编辑', 403)
         }
 
@@ -244,8 +244,6 @@ router.post('/review', authInterceptor, async (req, res) => {
             filteredData.anonymity = 0
         }
 
-        console.log(filteredData)
-
         try {
             const review = await userService.postReview(filteredData)
 
@@ -259,7 +257,6 @@ router.post('/review', authInterceptor, async (req, res) => {
 
 // 上传用户头像
 router.put('/avatar', authInterceptor, async (req, res) => {
-    const params = req.getParams()
     const file = req.getFile()
 
     if (!file) {

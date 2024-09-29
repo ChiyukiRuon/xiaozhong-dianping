@@ -160,20 +160,21 @@ const getUnverifiedContentList = async (page = 1, limit = 10) => {
 }
 
 /**
- * 根据记录ID获取未审核用户信息
+ * 根据记录ID获取未审核信息
  *
  * @param {Number} id 记录ID
+ * @param {String} type 类型。user为用户，merchant为商家
  * @return {Promise<Array>} 未审核用户信息
  * @author ChiyukiRuon
  * */
-const getUnverifiedUserById = async (id) => {
+const getUnverifiedUserById = async (id, type) => {
     const sql = `
-        SELECT v.*, u.uid, u.username, u.nickname, u.avatar, u.intro, u.role, u.status AS userStatus, u.remark AS userRemark
+        SELECT v.*, u.uid, u.username, u.nickname, u.avatar, u.intro, u.role, u.address, u.annex, u.email, u.status AS userStatus, u.remark AS userRemark
         FROM verification v
         LEFT JOIN user u ON u.uid = v.source_id
-        WHERE v.type = 'user' AND v.status = 2 AND v.id = ?
+        WHERE v.type = ? AND v.status = 2 AND v.id = ?
     `
-    return await db.query(sql, [id])
+    return await db.query(sql, [type, id])
 }
 
 /**

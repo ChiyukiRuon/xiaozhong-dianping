@@ -54,14 +54,14 @@ app.post('/api/auth', async (req, res) => {
             return res.error('请输入用户名和密码', 400)
         } else if (user.length !== 1 || !await comparePassword(plainPassword, user[0].password)) {
             return res.error('用户名或密码错误', 401)
-        } else if (user[0].status >= 2 || user[0].status !== 0 && user[0].role === 'merchant') {
+        } else if (user[0].status >= 2 || user[0].status === 4 && user[0].role === 'merchant') {
             return res.error('账户不可用', 403)
         } else {
             const { password, ...userInfo } = user[0]
             const payload = (({ uid, username, role, permission, status }) => ({ uid, username, role, permission, status }))(user[0])
             const token = jwt.signToken(payload)
 
-            return res.ok({ token: token, user: userInfo, route: getPagePathByRole(userInfo.role) }, '登录成功')
+            return res.ok({ token: token, user: userInfo, route: getPagePathByRole(userInfo.role, userInfo.status) }, '登录成功')
         }
     } catch (e) {
         logger.error(e)

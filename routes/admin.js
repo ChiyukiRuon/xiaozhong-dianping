@@ -9,7 +9,7 @@ const {hashPassword} = require("../utils/bcrypt");
 const {decryptData} = require("../utils/rsa");
 const xss = require("xss");
 const {generateRandomName} = require("../utils/formatter");
-const {verifyUser} = require("../services/adminService");
+const {sendMail} = require("../utils/mail");
 
 // 获取管理员列表
 router.get('/list', authInterceptor, async (req, res) => {
@@ -265,7 +265,7 @@ router.post('/user/verify', authInterceptor, async (req, res) => {
         return res.error('没有权限', 403)
     }
 
-    const verifyDetail = await adminService.getUnverifiedUserById(params.id)
+    const verifyDetail = await adminService.getUnverifiedUserById(params.id, 'user')
 
     if (!verifyDetail || verifyDetail.length === 0 || verifyDetail[0].type !== 'user') {
         return res.error('记录不存在', 404)
@@ -284,7 +284,7 @@ router.post('/user/verify', authInterceptor, async (req, res) => {
                     await adminService.verifyUser(params.id, params.approve)
                     return res.ok({}, '操作成功')
                 case 'avatar':
-                    await userService.updateUser({uid: params.uid, avatar: 'http://cdn.dianping.chiyukiruon.top/avatar.jpg'})
+                    await userService.updateUser({uid: params.uid, avatar: `${process.env.CDN_PERFIX}avatar.jpg`})
                     await adminService.verifyUser(params.id, params.approve)
                     return res.ok({}, '操作成功')
                 case 'intro':
@@ -313,7 +313,7 @@ router.post('/merchant/verify', authInterceptor, async (req, res) => {
         return res.error('没有权限', 403)
     }
 
-    const verifyDetail = await adminService.getUnverifiedUserById(params.id)
+    const verifyDetail = await adminService.getUnverifiedUserById(params.id, 'merchant')
 
     if (!verifyDetail || verifyDetail.length === 0 || verifyDetail[0].type !== 'merchant') {
         return res.error('记录不存在', 404)
@@ -328,6 +328,10 @@ router.post('/merchant/verify', authInterceptor, async (req, res) => {
                 case 'register':
                     await userService.updateUser({uid: params.uid, status: 4})
                     await adminService.verifyUser(params.id, params.approve)
+
+                    sendMail(verifyDetail[0].email, '', '', 'reject', {username: verifyDetail[0].username, remark: params.remark}).then(r => {
+                        if (!r.success) logger.error(r)
+                    })
                     return res.ok({}, '操作成功')
                 case 'nickname':
                     await userService.updateUser({uid: params.uid, nickname: generateRandomName(verifyDetail[0].username, 8, '商户 ')})
@@ -346,6 +350,11 @@ router.post('/merchant/verify', authInterceptor, async (req, res) => {
             }
         } else if (params.approve === 0) {
             await adminService.verifyUser(params.id, params.approve)
+
+            sendMail(verifyDetail[0].email, '', '', 'approve', {username: verifyDetail[0].username}).then(r => {
+                if (!r.success) logger.error(r)
+            })
+
             return res.ok({}, '操作成功')
         }
     } catch (e) {
@@ -358,7 +367,6 @@ router.post('/merchant/verify', authInterceptor, async (req, res) => {
 // 封禁用户
 router.post('/user/ban', authInterceptor, async (req, res) => {
     const params = req.getParams()
-    const userInfo = req.userInfo
     const usrList = await userService.getUserById(params.uid)
 
     if (!usrList || usrList.length === 0) {
