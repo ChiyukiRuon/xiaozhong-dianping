@@ -115,8 +115,261 @@ const updateMerchant = async (userInfo) => {
     await db.query(sql, values)
 }
 
+/**
+ * 根据美食ID获取美食信息
+ *
+ * @param {Number} id 美食ID
+ * @param {Number} [uid] 商家ID
+ * @return {Promise<Array>} 美食信息
+ * @author ChiyukiRuon
+ * */
+const getFoodById = async (id, uid = null) => {
+    let sql = 'SELECT * FROM food WHERE id = ?'
+
+    if (uid) {
+        sql += ' AND merchant = ?'
+        return await db.query(sql, [id, uid])
+    }
+    return await db.query(sql, [id])
+}
+
+/**
+ * 获取同一商家是否有重复美食
+ *
+ * @param {Number} uid 商家ID
+ * @param {String} name 美食名称
+ * @return {Promise<Array>} 重复美食信息
+ * @author ChiyukiRuon
+ * */
+const getFoodByMerchantAndName = async (uid, name) => {
+    const sql = 'SELECT * FROM food WHERE merchant = ? AND name = ?'
+    return await db.query(sql, [uid, name])
+}
+
+/**
+ * 新增美食
+ *
+ * @param {Object} foodInfo 美食信息
+ * @param {Number} uid 商家ID
+ * @return {Promise<Array>} 新增的美食信息
+ * @author ChiyukiRuon
+ * */
+const addFood = async (foodInfo, uid) => {
+    const {
+        name,
+        intro = null,
+        cover = '',
+        category = null,
+        price,
+        status
+    } = foodInfo
+
+    const sql = `INSERT INTO food (merchant, name, intro, cover, category, price, status) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    const result = await db.query(sql, [uid, name, intro, cover, category, price, status])
+    return await db.query('SELECT * FROM food WHERE id = ?', [result.insertId])
+}
+
+/**
+ * 编辑美食信息
+ *
+ * @param {Object} foodInfo 美食信息
+ * @param {Number} uid 商家ID
+ * @return {Promise<Array>} 编辑后的美食信息
+ * @author ChiyukiRuon
+ * */
+const editFood = async (foodInfo, uid) => {
+    const {
+        id,
+        name,
+        intro,
+        cover,
+        category,
+        price,
+        status
+    } = foodInfo
+
+    let fields = []
+    let values = []
+
+    if (name) {
+        fields.push('name = ?')
+        values.push(name)
+    }
+    if (intro) {
+        fields.push('intro = ?')
+        values.push(intro)
+    }
+    if (cover) {
+        fields.push('cover = ?')
+        values.push(cover)
+    }
+    if (category) {
+        fields.push('category = ?')
+        values.push(category)
+    }
+    if (price) {
+        fields.push('price = ?')
+        values.push(price)
+    }
+    if (status) {
+        fields.push('status = ?')
+        values.push(status)
+    }
+
+    if (fields.length === 0) {
+        return []
+    }
+
+    const sql = `UPDATE food SET ${fields.join(', ')} WHERE id = ? AND merchant = ?`
+    const result = await db.query(sql, [...values, id, uid])
+
+    if (result.affectedRows > 0) {
+        return await db.query('SELECT * FROM food WHERE id = ?', [id])
+    } else {
+        return []
+    }
+}
+
+/**
+ * 根据美食ID删除美食
+ *
+ * @param {Number} id 美食ID
+ * @param {Number} uid 商家ID
+ * @return {Promise<Boolean>} 删除结果
+ * */
+const deleteFood = async (id, uid) => {
+    const sql = 'DELETE FROM food WHERE id = ? AND merchant = ?'
+    try {
+        const result = await db.query(sql, [id, uid])
+        return result.affectedRows > 0
+    } catch (error) {
+        logger.error('Error:', error)
+        return false
+    }
+}
+
+/**
+ * 根据美食类别ID获取美食类别信息
+ *
+ * @param {Number} id 类别ID
+ * @param {Number} [uid] 商家ID
+ * @return {Promise<Array>} 类别信息
+ * @author ChiyukiRuon
+ * */
+const getCategoryById = async (id, uid = null) => {
+    let sql = 'SELECT * FROM category WHERE id = ?'
+
+    if (uid) {
+        sql += ' AND merchant = ?'
+        return await db.query(sql, [id, uid])
+    }
+
+    return await db.query(sql, [id])
+}
+
+/**
+ * 获取商家的全部类别信息
+ *
+ * @param {Number} uid 商家ID
+ * @return {Promise<Array>} 类别信息
+ * */
+const getAllCategoryByMerchant = async (uid) => {
+    const sql = 'SELECT * FROM category WHERE merchant = ?'
+    return await db.query(sql, [uid])
+}
+
+/**
+ * 获取同一商家是否有重复类别名
+ *
+ * @param {Number} uid 商家ID
+ * @param {String} category 类别名
+ * @return {Promise<Array>} 重复类别信息
+ * @author ChiyukiRuon
+ * */
+const getCategoryByMerchantAndCategory = async (uid, category) => {
+    const sql = 'SELECT * FROM category WHERE merchant = ? AND category = ?'
+    return await db.query(sql, [uid, category])
+}
+
+/**
+ * 新增美食类别
+ *
+ * @param {Number} uid 商家ID
+ * @param {String} category 类别名
+ * @return {Promise<Array>} 新增的类别信息
+ * @author ChiyukiRuon
+ * */
+const addCategory = async (uid, category) => {
+    const sql = 'INSERT INTO category (merchant, category) VALUES (?, ?)'
+    const result = await db.query(sql, [uid, category])
+
+    return await db.query('SELECT * FROM category WHERE id = ?', [result.insertId])
+}
+
+/**
+ * 编辑美食类别名
+ *
+ * @param {Number} id 类别ID
+ * @param {String} category 类别名
+ * @return {Promise<Array>} 编辑后的类别信息
+ * @author ChiyukiRuon
+ * */
+const editCategory = async (id, category) => {
+    const sql = 'UPDATE category SET category = ? WHERE id = ?'
+    return await db.query(sql, [category, id])
+}
+
+/**
+ * 删除美食类别，并将该商户的所有相关美食的类别字段设置为null
+ *
+ * @param {Number} id 类别ID
+ * @param {Number} uid 商家ID
+ * @return {Promise<boolean>} 返回删除结果，成功返回true，失败返回false
+ * @author ChiyukiRuon
+ */
+const deleteCategory = async (id, uid) => {
+    const connection = await pool.getConnection()
+
+    try {
+        await connection.beginTransaction()
+
+        const sqlDelete = 'DELETE FROM category WHERE id = ? AND merchant = ?'
+        const deleteResult = await connection.query(sqlDelete, [id, uid])
+
+        if (deleteResult[0].affectedRows > 0) {
+            const sqlUpdate = 'UPDATE food SET category = NULL WHERE merchant = ? AND category = ?'
+            await connection.query(sqlUpdate, [uid, id])
+
+            await connection.commit()
+            return true
+        } else {
+            await connection.rollback()
+            return false
+        }
+    } catch (error) {
+        logger.error(`删除类别或更新food表失败:${error}`)
+        await connection.rollback()
+        return false
+    } finally {
+        connection.release()
+    }
+}
+
+
+
 module.exports = {
     registerMerchant,
     applyMerchant,
-    updateMerchant
+    updateMerchant,
+    getFoodById,
+    getFoodByMerchantAndName,
+    addFood,
+    editFood,
+    deleteFood,
+    getCategoryById,
+    getAllCategoryByMerchant,
+    getCategoryByMerchantAndCategory,
+    addCategory,
+    editCategory,
+    deleteCategory
 }

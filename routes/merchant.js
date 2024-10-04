@@ -10,27 +10,7 @@ const {hashPassword} = require("../utils/bcrypt");
 const jwt = require("../utils/jwt");
 const logger = require("../utils/logger");
 const {sendMail} = require("../utils/mail");
-
-// 获取商家信息
-router.get('/info', (req, res) => {
-    // 获取商户信息逻辑
-    res.ok({ id: 1, name: '商户名称' })
-})
-
-// 添加食物
-router.post('/food', authInterceptor, (req, res) => {
-    // 添加食物逻辑
-    res.ok('食物添加成功')
-})
-
-// 获取食物列表
-router.get('/food', (req, res) => {
-    // 获取食物列表逻辑
-    res.ok([
-        { id: 1, name: '食物1' },
-        { id: 2, name: '食物2' }
-    ])
-})
+const xss = require("xss");
 
 // 商家注册
 router.post('/register', async (req, res) => {
@@ -171,10 +151,178 @@ router.post('/info', authInterceptor, async (req, res) => {
     }
 })
 
-// 上传用户头像
-router.put('/avatar', authInterceptor, async (req, res) => {
-    const file = req.getFile()
+// 新增、编辑美食信息
+router.post('/food', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+    const userInfo = req.userInfo
 
+    if (!userInfo.uid) {
+        return res.error('无访问权限', 403)
+    }
+    if (params.id) {
+        try {
+            const food = await merchantService.getFoodById(params.id, userInfo.uid)
+            if (food.length === 0) {
+                return res.error('美食不存在', 404)
+            }
+            if (params.name) {
+                if (params.name.trim() === '') return res.error('美食名称为空', 400)
+                if (params.name.length > 20) return res.error('美食名称长度不能超过20', 400)
+
+                const foodList = await merchantService.getFoodByMerchantAndName(userInfo.uid, params.name)
+                if (foodList.length > 0) {
+                    if (foodList[0].id !== params.id) return res.error('美食名称重复', 400)
+                }
+
+                params.name = xss(params.name.trim())
+            }
+            if (params.intro) {
+                if (params.intro.length > 100) {
+                    return res.error('美食简介长度不能超过100', 100)
+               } else {
+                    params.intro = xss(params.intro.trim())
+                }
+            }
+            if (params.cover && !params.cover.startsWith(`${process.env.CDN_PERFIX}cover/`)) {
+                return res.error('非法的封面', 400)
+            }
+            if (params.price && params.price < 0) {
+                return res.error('美食价格不合法', 400)
+            }
+            if (params.category) {
+                const categoryList = await merchantService.getAllCategoryByMerchant(userInfo.uid)
+                const exists = categoryList.some(item => item.id === params.category)
+                if (!exists) return res.error('不存在的美食类别', 400)
+            }
+            if (params.status && params.status !== 0 && params.status !== 1) {
+                return res.error('非法的状态', 400)
+            }
+
+            const result = await merchantService.editFood(params, userInfo.uid)
+
+            if (result.length !== 0) {
+                return res.ok(result[0], '美食编辑成功')
+            } else {
+                return res.error('美食编辑失败', 500)
+            }
+        } catch (e) {
+            logger.error(e)
+            return res.error('服务器内部错误', 500)
+        }
+    } else {
+        try {
+            if (!params.name) {
+                return res.error('美食名称为空', 400)
+            }
+            if (!params.price) {
+                return res.error('美食价格为空', 400)
+            }
+            if (params.name) {
+                if (params.name.trim() === '') return res.error('美食名称为空', 400)
+                if (params.name.length > 20) return res.error('美食名称长度不能超过20', 400)
+
+                const foodList = await merchantService.getFoodByMerchantAndName(userInfo.uid, params.name)
+                if (foodList.length > 0) return res.error('美食名称重复', 400, foodList)
+
+                params.name = xss(params.name.trim())
+            }
+            if (params.intro) {
+                if (params.intro.length > 100) {
+                    return res.error('美食简介长度不能超过100', 100)
+                } else {
+                    params.intro = xss(params.intro.trim())
+                }
+            }
+            if (params.cover && !params.cover.startsWith(`${process.env.CDN_PERFIX}cover/`)) {
+                return res.error('非法的封面', 400)
+            }
+            if (params.price && params.price < 0) {
+                return res.error('美食价格不合法', 400)
+            }
+            if (params.category) {
+                const categoryList = await merchantService.getAllCategoryByMerchant(userInfo.uid)
+                const exists = categoryList.some(item => item.category === params.category)
+                if (!exists) return res.error('不存在的美食类别', 400)
+            }
+            if (params.status && (params.status !== 0 || params.status !== 1)) {
+                return res.error('非法的状态', 400)
+            }
+
+            const result = await merchantService.addFood(params, userInfo.uid)
+            console.log(result)
+
+            if (result.length !== 0) {
+                return res.ok(result[0], '美食添加成功')
+            } else {
+                return res.error('美食添加失败', 500)
+            }
+        } catch (e) {
+            logger.error(e)
+            return res.error('服务器内部错误', 500)
+        }
+    }
+})
+
+// 新增、编辑美食类别
+router.post('/category', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+    const userInfo = req.userInfo
+
+    if (!userInfo.uid) {
+        return res.error('无访问权限', 403)
+    }
+
+    if (params.id) {
+        try {
+            const category = await merchantService.getCategoryById(params.id)
+            if (category.length === 0) {
+                return res.error('类别不存在', 404)
+            }
+            if (!params.category.trim()) {
+                return res.error('类别为空', 400)
+            }
+
+            const categoryList = await merchantService.getCategoryByMerchantAndCategory(userInfo.uid, params.category)
+            if (categoryList.length > 0) {
+                return res.error('类别已存在', 400, categoryList)
+            }
+
+            const result = await merchantService.editCategory(params.id, params.category)
+
+            return res.ok(result[0], '类别编辑成功', 200)
+        } catch (e) {
+            logger.error(e)
+            return res.error('服务器内部错误', 500)
+        }
+    } else {
+        try {
+            if (!params.category.trim()) {
+                return res.error('类别为空', 400)
+            }
+
+            const categoryList = await merchantService.getCategoryByMerchantAndCategory(userInfo.uid, params.category)
+            if (categoryList.length > 0) {
+                return res.error('类别已存在', 400, categoryList)
+            }
+
+            const result = await merchantService.addCategory(userInfo.uid, params.category)
+
+            return res.ok(result[0], '类别添加成功', 200)
+        } catch (e) {
+            logger.error(e)
+            return res.error('服务器内部错误', 500)
+        }
+    }
+})
+
+// 上传文件
+router.put('/file', authInterceptor, async (req, res) => {
+    const file = req.getFile()
+    const params = req.getParams()
+
+    if (!['annex', 'avatar', 'cover'].includes(params.type) || !params.type) {
+        return res.error('非法的文件类型', 400)
+    }
     if (!file) {
         return res.error('未上传文件', 400)
     }
@@ -189,40 +337,68 @@ router.put('/avatar', authInterceptor, async (req, res) => {
     }
 
     const fileName = renameFile(file[0].name)
-    const result = await uploadFile(file[0].data, `avatar/${fileName}`)
+    const result = await uploadFile(file[0].data, `${params.type}/${fileName}`)
 
     if (result.success) {
-        return res.ok({ url: result.data.key, size: result.data.fsize })
+        return res.ok({ type: params.type, url: result.data.key, size: result.data.fsize })
     } else {
         return res.error('上传失败', 500)
     }
 })
 
-// 上传附件
-router.put('/annex', authInterceptor, async (req, res) => {
-    const file = req.getFile()
+// 删除美食
+router.delete('/food', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+    const userInfo = req.userInfo
 
-    if (!file) {
-        return res.error('未上传文件', 400)
-    }
-    if (file.length > 1) {
-        return res.error('一次只能上传一个文件', 400)
-    }
-    if (!isImageValid(file[0])) {
-        return res.error('仅支持.jpg以及.png格式的图片', 400)
-    }
-    if (file[0].size > 2 * 1024 * 1024) {
-        return res.error('文件大小不能超过2MB', 400)
+    if (!userInfo.uid) {
+        return res.error('无访问权限', 403)
     }
 
-    const fileName = renameFile(file[0].name)
-    const result = await uploadFile(file[0].data, `annex/${fileName}`)
+    try {
+        const food = await merchantService.getFoodById(params.id, userInfo.uid)
+        if (food.length === 0) {
+            return res.error('美食不存在', 404)
+        }
 
-    if (result.success) {
-        return res.ok({ url: result.data.key, size: result.data.fsize })
-    } else {
-        return res.error('上传失败', 500)
+        const result = await merchantService.deleteFood(params.id, userInfo.uid)
+        if (result) {
+            return res.ok({}, '美食删除成功')
+        } else {
+            return res.error('美食删除失败', 500)
+        }
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+// 删除美食类别
+router.delete('/category', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+    const userInfo = req.userInfo
+
+    if (!userInfo.uid) {
+        return res.error('无访问权限', 403)
+    }
+
+    try {
+        const category = await merchantService.getCategoryById(params.id, userInfo.uid)
+        if (category.length === 0) {
+            return res.error('类别不存在', 404)
+        }
+        const result = await merchantService.deleteCategory(params.id, userInfo.uid)
+
+        if (result) {
+            return res.ok({}, '类别删除成功')
+        } else {
+            return res.error('类别删除失败', 500)
+        }
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
     }
 })
 
 module.exports = router
+
