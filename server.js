@@ -10,7 +10,7 @@ const generateKeyPair = require('./utils/rsa')
 const {decryptData} = require("./utils/rsa");
 const {comparePassword} = require("./utils/bcrypt");
 const jwt = require("./utils/jwt");
-const {getPagePathByRole} = require("./utils/common");
+const {getPagePathByRole, getSidebar} = require("./utils/common");
 
 const PORT = process.env.PORT || 3000
 
@@ -61,7 +61,7 @@ app.post('/api/auth', async (req, res) => {
             const payload = (({ uid, username, role, permission, status }) => ({ uid, username, role, permission, status }))(user[0])
             const token = jwt.signToken(payload)
 
-            return res.ok({ token: token, user: userInfo, route: getPagePathByRole(userInfo.role, userInfo.status) }, '登录成功')
+            return res.ok({ token: token, user: userInfo, route: getPagePathByRole(userInfo.role, userInfo.status), menu: getSidebar(userInfo.permission) }, '登录成功')
         }
     } catch (e) {
         logger.error(e)

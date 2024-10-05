@@ -249,7 +249,6 @@ router.post('/food', authInterceptor, async (req, res) => {
             }
 
             const result = await merchantService.addFood(params, userInfo.uid)
-            console.log(result)
 
             if (result.length !== 0) {
                 return res.ok(result[0], '美食添加成功')
