@@ -8,9 +8,13 @@ const ROLE_PATH = {
 
 const authInterceptor = (req, res, next) => {
     const token = req.headers['authorization'] // 从请求头中获取 token
+    const reqPath = req.originalUrl.split('/').slice(0, 3).join('/')
 
-    if (!token) {
+    if (!token && Object.values(ROLE_PATH).includes(reqPath)) {
         return res.error('需要提供 Token', 403)
+    } else if (!token && !Object.values(ROLE_PATH).includes(reqPath)) {
+        req.userInfo = null
+        return next()
     }
 
     // 验证 token
@@ -25,6 +29,10 @@ const authInterceptor = (req, res, next) => {
             if (req.userInfo.permission) {
                 req.userInfo.permission = req.userInfo.permission.split('+')
             }
+
+            next()
+        } else if (!Object.values(ROLE_PATH).includes(reqPath)) {
+            req.userInfo = decoded
 
             next()
         } else {

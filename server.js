@@ -10,7 +10,8 @@ const generateKeyPair = require('./utils/rsa')
 const {decryptData} = require("./utils/rsa");
 const {comparePassword} = require("./utils/bcrypt");
 const jwt = require("./utils/jwt");
-const {getPagePathByRole, getSidebar} = require("./utils/common");
+const {getRoute} = require("./utils/common");
+const authInterceptor = require("./Interceptors/authInterceptor");
 
 const PORT = process.env.PORT || 3000
 
@@ -41,6 +42,19 @@ app.get('/api/key', async (req, res) => {
     }
 })
 
+// 获取路由
+app.get('/api/route', authInterceptor, async (req, res) => {
+    const userInfo = req.userInfo
+
+    if (!userInfo) {
+        return res.ok({ router: '/' })
+    } else {
+        const { path, route } = getRoute(userInfo)
+
+        return res.ok({ path: path, route: route })
+    }
+})
+
 // 验证用户
 app.post('/api/auth', async (req, res) => {
     const params = req.getParams()
@@ -60,8 +74,9 @@ app.post('/api/auth', async (req, res) => {
             const { password, ...userInfo } = user[0]
             const payload = (({ uid, username, role, permission, status }) => ({ uid, username, role, permission, status }))(user[0])
             const token = jwt.signToken(payload)
+            const { path, route } = getRoute(userInfo)
 
-            return res.ok({ token: token, user: userInfo, route: getPagePathByRole(userInfo.role, userInfo.status), menu: getSidebar(userInfo.permission) }, '登录成功')
+            return res.ok({ token: token, user: userInfo, path: path, route: route }, '登录成功')
         }
     } catch (e) {
         logger.error(e)

@@ -122,9 +122,9 @@ const getSidebar = (role, permission) => {
  * */
 const getRoute = (userInfo) => {
     const { role, status, permission } = userInfo
-    const pagePath = getPagePathByRole(role, status)
-    const sidebar = getSidebar(userInfo.permission, permission)
-    return { pagePath, sidebar }
+    const path = getPagePathByRole(role, status)
+    const route = getSidebar(role, permission)
+    return { path: path, route: route }
 }
 
 /**
