@@ -12,6 +12,7 @@ const {comparePassword} = require("./utils/bcrypt");
 const jwt = require("./utils/jwt");
 const {getRoute} = require("./utils/common");
 const authInterceptor = require("./Interceptors/authInterceptor");
+const cors = require('cors');
 
 const PORT = process.env.PORT || 3000
 
@@ -29,9 +30,42 @@ app.use(fileUpload({
 }));
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+app.use(cors())
 app.use(requestInterceptor)
 
 app.use('/api', route)
+
+// GET测试接口
+app.get('/api/test', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+    const userInfo = req.userInfo
+
+    if (Object.keys(params).length !== 0) {
+        if (params.code == 200 || params.code == 201) {
+            return res.ok({ params: params, userInfo: userInfo }, 'This is success message', params.code)
+        } else {
+            return res.error('This is error message', 404, { params: params, userInfo: userInfo })
+        }
+    } else {
+        return res.ok({ userInfo: userInfo })
+    }
+})
+
+// POST测试接口
+app.post('/api/test', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+    const userInfo = req.userInfo
+
+    if (Object.keys(params).length !== 0) {
+        if (params.code == 200 || params.code == 201) {
+            return res.ok({ params: params, userInfo: userInfo }, 'This is success message', params.code)
+        } else {
+            return res.error('This is error message', 404, { params: params, userInfo: userInfo })
+        }
+    } else {
+        return res.ok({ userInfo: userInfo })
+    }
+})
 
 // 获取公钥
 app.get('/api/key', async (req, res) => {
