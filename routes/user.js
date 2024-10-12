@@ -10,6 +10,7 @@ const jwt = require("../utils/jwt");
 const xss = require("xss");
 const {uploadFile} = require("../utils/qiniu");
 const {renameFile} = require("../utils/formatter");
+const {getRoute} = require("../utils/common");
 
 // 搜索用户
 router.get('/search', async (req, res) => {
@@ -31,6 +32,23 @@ router.get('/search', async (req, res) => {
         const total = userList.length
 
         return res.ok({ userList: userList, total: total, current: params.page, size: params.size }, '获取成功')
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+router.get('/available', async (req, res) => {
+    const params = req.getParams()
+
+    try {
+        const result = await userService.getUserByUsername(params.username)
+
+        if (result.length === 0) {
+            return res.ok({ available: true })
+        } else {
+            return res.ok({ available: false })
+        }
     } catch (e) {
         logger.error(e)
         return res.error('服务器内部错误', 500)
@@ -89,8 +107,9 @@ router.post('/register', async (req, res) => {
         const { password, ...userInfo } = user[0]
         const payload = (({ uid, username, role, permission, status }) => ({ uid, username, role, permission, status }))(user[0])
         const token = jwt.signToken(payload)
+        const { path, route } = getRoute(userInfo)
 
-        return res.ok({ token: token, user: userInfo}, '注册成功', 201)
+        return res.ok({ token: token, user: userInfo, path: path, route: route }, '注册成功', 201)
     } catch (e) {
         logger.error(e)
         return res.error('服务器内部错误', 500)

@@ -85,10 +85,10 @@ const getPagePathByRole = (role, status) => {
                 case 5:
                     return '/apply'
                 default:
-                    return '/login'
+                    return '/'
             }
         default:
-            return '/login'
+            return '/'
     }
 }
 
