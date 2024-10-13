@@ -4,7 +4,7 @@ const app = express()
 const fs = require('fs')
 const route = require('./routes')
 const requestInterceptor = require('./Interceptors/requestInterceptor')    // 引入请求拦截器
-const { userService } = require('./services')
+const { userService, commonService} = require('./services')
 const logger = require('./utils/logger')
 const generateKeyPair = require('./utils/rsa')
 const {decryptData} = require("./utils/rsa");
@@ -86,6 +86,20 @@ app.get('/api/route', authInterceptor, async (req, res) => {
         const { path, route } = getRoute(userInfo)
 
         return res.ok({ path: path, route: route })
+    }
+})
+
+app.get('/api/regions', async (req, res) => {
+    const params = req.getParams()
+
+
+    try {
+        const result = await commonService.getRegionList(params.pcode)
+
+        return res.ok(result)
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
     }
 })
 

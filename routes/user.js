@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const authInterceptor = require('../Interceptors/authInterceptor')
 const {userService} = require("../services");
-const {isPasswordValid, isUsernameValid, isPhoneNumberValid, isImageValid} = require("../utils/valid");
+const {isPasswordValid, isUsernameValid, isPhoneNumberValid, isImageValid, isNicknameValid} = require("../utils/valid");
 const logger = require("../utils/logger");
 const {decryptData} = require("../utils/rsa");
 const {hashPassword} = require("../utils/bcrypt");
@@ -148,7 +148,7 @@ router.post('/info', authInterceptor, async (req, res) => {
         if (params.email && !isEmailValid(params.email)) {
             return res.error('非法的邮箱', 400)
         }
-        if (params.nickname && !isUsernameValid(params.nickname)) {
+        if (params.nickname && !isNicknameValid(params.nickname)) {
             return res.error('非法的昵称', 400)
         }
         if (params.intro) {

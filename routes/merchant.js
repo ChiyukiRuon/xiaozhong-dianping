@@ -3,7 +3,7 @@ const router = express.Router()
 const authInterceptor = require('../Interceptors/authInterceptor')
 const {renameFile} = require("../utils/formatter");
 const {uploadFile} = require("../utils/qiniu");
-const {isImageValid, isUsernameValid, isPasswordValid, isPhoneNumberValid, isEmailValid} = require("../utils/valid");
+const {isImageValid, isUsernameValid, isPasswordValid, isPhoneNumberValid, isEmailValid, isNicknameValid} = require("../utils/valid");
 const {decryptData} = require("../utils/rsa");
 const {userService, merchantService} = require("../services");
 const {hashPassword} = require("../utils/bcrypt");
@@ -101,7 +101,7 @@ router.post('/info', authInterceptor, async (req, res) => {
         if (params.username && params.username !== user[0].username) {
             const userList = await userService.getUserByUsername(params.username)
 
-            if (!isUsernameValid(params.username) || userList.length > 0) {
+            if (!isNicknameValid(params.username) || userList.length > 0) {
                 return res.error('非法的用户名', 400)
             }
         }
@@ -120,7 +120,7 @@ router.post('/info', authInterceptor, async (req, res) => {
         if (params.email && !isEmailValid(params.email)) {
             return res.error('非法的邮箱', 400)
         }
-        if (params.nickname && !isUsernameValid(params.nickname)) {
+        if (params.nickname && !isNicknameValid(params.nickname)) {
             return res.error('非法的昵称', 400)
         }
         if (params.intro) {
