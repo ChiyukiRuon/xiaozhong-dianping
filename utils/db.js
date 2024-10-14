@@ -8,7 +8,7 @@ const dbConfig = {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: 200,
     queueLimit: 0
 }
 
@@ -28,6 +28,7 @@ const query = async (sql, params = []) => {
         const [results, ] = await pool.execute(sql, params)
         return results
     } catch (error) {
+        console.error(error)
         logger.error('数据库查询失败:', error)
         throw error
     }

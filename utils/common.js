@@ -79,7 +79,7 @@ const getPagePathByRole = (role, status) => {
                 case 0:
                     return '/dashboard'
                 case 1:
-                    return '/status'
+                    return '/apply'
                 case 4:
                     return '/apply'
                 case 5:

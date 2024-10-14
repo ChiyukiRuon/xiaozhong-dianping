@@ -48,7 +48,7 @@ router.post('/apply', authInterceptor, async (req, res) => {
     const params = req.getParams()
     const userInfo = req.userInfo
 
-    if (!userInfo || userInfo.status !== 1) {
+    if (!userInfo && userInfo.status !== 4 && userInfo.status !== 5) {
         return res.error('无访问权限', 403)
     }
     if (!params.phone || !isPhoneNumberValid(params.phone)) {

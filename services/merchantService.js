@@ -30,7 +30,7 @@ const applyMerchant = async (merchantInfo) => {
     try {
         await connection.beginTransaction()
 
-        const sql1 = 'UPDATE user SET nickname = ?, avatar = ?, phone = ?, email = ?, address = ?, annex = ? WHERE uid = ?'
+        const sql1 = 'UPDATE user SET nickname = ?, avatar = ?, phone = ?, email = ?, address = ?, annex = ? status = 1 WHERE uid = ?'
         await db.query(sql1, [nickname, avatar, phone, email, address, annex, uid])
 
         const sql2 = 'INSERT INTO verification (type, detail, source_id, status, annex) VALUES ("merchant", "register", ?, 2, ?)'

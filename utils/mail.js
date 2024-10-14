@@ -16,7 +16,7 @@ const TEMPLATES = {
         html: `
             <p>您的商家申请已提交成功，我们会在 1-2 个工作日内审核，审核通过后会通过邮件通知您。</p>
             <p>账户：<span>${data.username}</span></p>
-            <p>您可以访问 <a href="https://dianping.chiyukiruon.top/merchant/status">审核进度</a> 查看审核进度。</p>
+            <p>您可以访问 <a href="https://dianping.chiyukiruon.top/merchant/apply">审核进度</a> 查看审核进度。</p>
         `
     }),
     approve: (data) => ({
