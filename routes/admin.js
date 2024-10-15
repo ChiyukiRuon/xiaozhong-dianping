@@ -103,10 +103,9 @@ router.get('/verify/merchant', authInterceptor, async (req, res) => {
     }
 
     try {
-        const merchantList = formatter.unverifiedUserList(await adminService.getUnverifiedMerchantList(params.page, params.size))
-        const total = merchantList.length
+        const result = await adminService.getUnverifiedMerchantList(params.page, params.size, params.username, params.nickname, params.detail)
 
-        return res.ok({ merchantList: merchantList, total: total, current: params.page, size: params.size })
+        return res.ok({ merchantList: formatter.unverifiedUserList(result.list), total: result.total, current: params.page, size: params.size })
     } catch (e) {
         logger.error(e)
         return res.error('服务器内部错误', 500)
@@ -257,7 +256,7 @@ router.post('/info', authInterceptor, async (req, res) => {
 })
 
 // 审核用户
-router.post('/user/verify', authInterceptor, async (req, res) => {
+router.post('/verify/user', authInterceptor, async (req, res) => {
     const params = req.getParams()
     const userInfo = req.userInfo
 
@@ -305,7 +304,7 @@ router.post('/user/verify', authInterceptor, async (req, res) => {
 })
 
 // 审核商家
-router.post('/merchant/verify', authInterceptor, async (req, res) => {
+router.post('/verify/merchant', authInterceptor, async (req, res) => {
     const params = req.getParams()
     const userInfo = req.userInfo
 
@@ -318,16 +317,16 @@ router.post('/merchant/verify', authInterceptor, async (req, res) => {
     if (!verifyDetail || verifyDetail.length === 0 || verifyDetail[0].type !== 'merchant') {
         return res.error('记录不存在', 404)
     }
-    if (params.approve !== 0 && params.approve !== 3) {
+    if (params.approve !== 0 && params.approve !== 1) {
         return res.error('非法的参数', 400)
     }
 
     try {
-        if (params.approve === 3) {
+        if (params.approve === 0) {
             switch (verifyDetail[0].detail) {
                 case 'register':
                     await userService.updateUser({uid: params.uid, status: 4})
-                    await adminService.verifyUser(params.id, params.approve)
+                    await adminService.verifyUser(params.id, 3)
 
                     sendMail(verifyDetail[0].email, '', '', 'reject', {username: verifyDetail[0].username, remark: params.remark}).then(r => {
                         if (!r.success) logger.error(r)
@@ -348,8 +347,8 @@ router.post('/merchant/verify', authInterceptor, async (req, res) => {
                 default:
                     return res.error('服务器内部错误', 500)
             }
-        } else if (params.approve === 0) {
-            await adminService.verifyUser(params.id, params.approve)
+        } else if (params.approve === 1) {
+            await adminService.verifyUser(params.id, 0)
 
             sendMail(verifyDetail[0].email, '', '', 'approve', {username: verifyDetail[0].username}).then(r => {
                 if (!r.success) logger.error(r)

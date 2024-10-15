@@ -7,7 +7,7 @@
  * */
 const unverifiedUserList = (userInfoList) => {
     return userInfoList.map(obj => {
-        const { uid, username, nickname, avatar, intro, role, userStatus, userRemark, ...rest } = obj
+        const { uid, username, nickname, password, avatar, intro, phone, email, address, role, userStatus, userRemark, permission, annex, remark, ...rest } = obj
 
         const user = {
             uid,
@@ -15,7 +15,10 @@ const unverifiedUserList = (userInfoList) => {
             nickname,
             avatar,
             intro,
-            role,
+            phone,
+            email,
+            address,
+            annex,
             status: userStatus,
             remark: userRemark
         }
