@@ -12,7 +12,7 @@ const ADMIN_MENU = [
         component: 'Merchant'
     },
     {
-        title: '内容管理',
+        title: '评论管理',
         icon: 'Menu',
         path: 'content',
         component: 'Content'
@@ -39,7 +39,7 @@ const MERCHANT_MENU = [
         component: 'Category'
     },
     {
-        title: '我的评价',
+        title: '用户评价',
         icon:'Star',
         path: 'review',
         component: 'Review'

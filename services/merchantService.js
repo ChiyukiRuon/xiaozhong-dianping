@@ -3,6 +3,75 @@ const {pool} = require("../utils/db");
 const logger = require("../utils/logger");
 
 /**
+ * 获取商家的美食信息
+ *
+ * @param {Number} merchant 商家ID
+ * @param {String} [name] 美食名称
+ * @param {Number} [category] 美食分类
+ * @param {Number} [status] 美食状态
+ * @param {Number} [page] 页数
+ * @param {Number} [limit] 每页数量
+ * @return {Promise<{ list: Array, total: Number }>} 食品信息列表和总数量
+ * @author ChiyukiRuon
+ * */
+const getMerchantFood = async (merchant, name = '', category = null, status = null, page = 1, limit = 10) => {
+    const offset = (page - 1) * limit
+
+    const baseQuery = `
+        FROM food
+        WHERE merchant = ? 
+        ${name ? 'AND name LIKE ?' : ''}
+        ${category ? 'AND category = ?' : ''}
+        ${status ? 'AND status = ?' : ''}
+    `
+
+    const dataQuery =`
+        SELECT *
+        ${baseQuery}
+        LIMIT ? OFFSET ?
+    `
+
+    const countQuery = `
+        SELECT COUNT(*) AS total
+        ${baseQuery}
+    `
+
+    let params = []
+    if (name) {
+        params.push(`%${name}%`)
+    }
+    if (category) {
+        params.push(category)
+    }
+    if (status) {
+        params.push(status)
+    }
+
+    const [data, total] = await Promise.all([
+        db.query(dataQuery, [merchant, ...params, limit, offset]),
+        db.query(countQuery, [merchant])
+    ])
+
+    return {
+        list: data,
+        total: total[0].total
+    }
+}
+
+/**
+ * 获取商家分类
+ *
+ * @param {Number} merchant 商家ID
+ * @return {Promise<{id: Number, merchant: Number, category: String}[]>} 商家分类
+ * @author ChiyukiRuon
+ * */
+const getMerchantCategory = async (merchant) => {
+    const sql = 'SELECT * FROM category WHERE merchant = ?'
+    return await db.query(sql, [merchant])
+}
+
+
+/**
  * 注册商家
  *
  * @param {String} username 用户名
@@ -358,6 +427,8 @@ const deleteCategory = async (id, uid) => {
 
 
 module.exports = {
+    getMerchantFood,
+    getMerchantCategory,
     registerMerchant,
     applyMerchant,
     updateMerchant,

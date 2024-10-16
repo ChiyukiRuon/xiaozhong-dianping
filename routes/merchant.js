@@ -12,6 +12,42 @@ const logger = require("../utils/logger");
 const {sendMail} = require("../utils/mail");
 const xss = require("xss");
 
+// 获取美食信息列表
+router.get('/food', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+    const userInfo = req.userInfo
+
+    params.page = parseInt(params.page) || 1
+    params.size = parseInt(params.size) || Math.min(300, parseInt(params.size))
+
+    if (params.page <= 0 || params.size <= 0) {
+        return res.error('非法的分页参数', 400)
+    }
+
+    try {
+        const result = await merchantService.getMerchantFood(userInfo.uid, params.name, params.category, params.status, params.page, params.size)
+
+        return res.ok({ foodList: result.list, total: result.total, current: params.page, size: params.size })
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+// 获取商家分类
+router.get('/category', authInterceptor, async (req, res) => {
+    const userInfo = req.userInfo
+
+    try {
+        const result = await merchantService.getMerchantCategory(userInfo.uid)
+
+        return res.ok({ categoryList: result })
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
 // 商家注册
 router.post('/register', async (req, res) => {
     const params = req.getParams()

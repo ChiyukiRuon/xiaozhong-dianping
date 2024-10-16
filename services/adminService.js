@@ -105,20 +105,56 @@ const addAdmin = async (params) => {
  *
  * @param {Number} page 当前页数，默认为1
  * @param {Number} limit 每页条数，默认为10
- * @return {Promise<Array>} 未审核的普通用户列表
+ * @param {String} username 搜索关键词
+ * @param {String} nickname 搜索关键词
+ * @param {String} detail 搜索关键词
+ * @return {Promise<{list: Array, total: Number}>} 包含未审核用户列表和总条数
  * @author ChiyukiRuon
  * */
-const getUnverifiedUserList = async (page = 1, limit = 10) => {
+const getUnverifiedUserList = async (page = 1, limit = 10, username = '', nickname = '', detail = '') => {
     const offset = (page - 1) * limit
 
-    const sql = `
-        SELECT v.*, u.uid, u.username, u.nickname, u.avatar, u.intro, u.role, u.status AS userStatus, u.remark AS userRemark
+    const baseQuery = `
         FROM verification v
         LEFT JOIN user u ON u.uid = v.source_id
         WHERE v.type = 'user' AND v.status = 2
+        ${username ? 'AND u.username LIKE ?' : ''}
+        ${nickname ? 'AND u.nickname LIKE ?' : ''}
+        ${detail ? 'AND v.detail = ?' : ''}
+    `
+
+    const dataQuery = `
+        SELECT v.*, v.status AS verifyStatus, v.remark AS verifyRemark, u.*, u.status AS userStatus, u.remark AS userRemark
+        ${baseQuery}
         LIMIT ? OFFSET ?
     `
-    return await db.query(sql, [limit, offset])
+
+    const countQuery = `
+        SELECT COUNT(*) AS total
+        ${baseQuery}
+    `
+
+    const params = []
+    if (username) {
+        params.push(`%${username}%`)
+    }
+    if (nickname) {
+        params.push(`%${nickname}%`)
+    }
+    if (detail) {
+        params.push(detail)
+    }
+
+    // 执行查询
+    const [data, total] = await Promise.all([
+        db.query(dataQuery, [...params, limit, offset]),
+        db.query(countQuery, params)
+    ])
+
+    return {
+        list: data,
+        total: total[0].total
+    }
 }
 
 /**
@@ -129,7 +165,7 @@ const getUnverifiedUserList = async (page = 1, limit = 10) => {
  * @param {String} username 搜索关键词
  * @param {String} nickname 搜索关键词
  * @param {String} detail 搜索关键词
- * @return {Promise<Object>} 包含未审核商家列表和总条数
+ * @return {Promise<{list: Array, total: Number}>} 包含未审核商家列表和总条数
  * @author ChiyukiRuon
  */
 const getUnverifiedMerchantList = async (page = 1, limit = 10, username = '', nickname = '', detail = '') => {

@@ -76,10 +76,9 @@ router.get('/verify/user', authInterceptor, async (req, res) => {
     }
 
     try {
-        const userList = formatter.unverifiedUserList(await adminService.getUnverifiedUserList(params.page, params.size))
-        const total = userList.length
+        const result = await adminService.getUnverifiedUserList(params.page, params.size, params.username, params.nickname, params.detail)
 
-        return res.ok({ userList: userList, total: total, current: params.page, size: params.size })
+        return res.ok({ userList: formatter.unverifiedUserList(result.list), total: result.total, current: params.page, size: params.size })
     } catch (e) {
         logger.error(e)
         return res.error('服务器内部错误', 500)
@@ -272,29 +271,29 @@ router.post('/verify/user', authInterceptor, async (req, res) => {
     if (params.uid !== verifyDetail[0].uid) {
         return res.error('非法的操作', 400)
     }
-    if (params.approve !== 0 && params.approve !== 3) {
+    if (params.approve !== 0 && params.approve !== 1) {
         return res.error('非法的参数', 400)
     }
     try {
-        if (params.approve === 3) {
+        if (params.approve === 0) {
             switch (verifyDetail[0].detail) {
                 case 'nickname':
                     await userService.updateUser({uid: params.uid, nickname: generateRandomName(verifyDetail[0].username, 8, '用户 ')})
-                    await adminService.verifyUser(params.id, params.approve)
+                    await adminService.verifyUser(params.id, 3)
                     return res.ok({}, '操作成功')
                 case 'avatar':
                     await userService.updateUser({uid: params.uid, avatar: `${process.env.CDN_PERFIX}avatar.jpg`})
-                    await adminService.verifyUser(params.id, params.approve)
+                    await adminService.verifyUser(params.id, 3)
                     return res.ok({}, '操作成功')
                 case 'intro':
                     await userService.updateUser({uid: params.uid, intro: '这个人很懒，什么都没有写'})
-                    await adminService.verifyUser(params.id, params.approve)
+                    await adminService.verifyUser(params.id, 3)
                     return res.ok({}, '操作成功')
                 default:
                     return res.error('服务器内部错误', 500)
             }
-        } else if (params.approve === 0) {
-            await adminService.verifyUser(params.id, params.approve)
+        } else if (params.approve === 1) {
+            await adminService.verifyUser(params.id, 0)
             return res.ok({}, '操作成功')
         }
     } catch (e) {
@@ -334,15 +333,15 @@ router.post('/verify/merchant', authInterceptor, async (req, res) => {
                     return res.ok({}, '操作成功')
                 case 'nickname':
                     await userService.updateUser({uid: params.uid, nickname: generateRandomName(verifyDetail[0].username, 8, '商户 ')})
-                    await adminService.verifyUser(params.id, params.approve)
+                    await adminService.verifyUser(params.id, 3)
                     return res.ok({}, '操作成功')
                 case 'avatar':
                     await userService.updateUser({uid: params.uid, avatar: 'http://cdn.dianping.chiyukiruon.top/avatar.jpg'})
-                    await adminService.verifyUser(params.id, params.approve)
+                    await adminService.verifyUser(params.id, 3)
                     return res.ok({}, '操作成功')
                 case 'intro':
                     await userService.updateUser({uid: params.uid, intro: '这个人很懒，什么都没有写'})
-                    await adminService.verifyUser(params.id, params.approve)
+                    await adminService.verifyUser(params.id, 3)
                     return res.ok({}, '操作成功')
                 default:
                     return res.error('服务器内部错误', 500)
