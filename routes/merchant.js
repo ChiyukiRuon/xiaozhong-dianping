@@ -12,6 +12,20 @@ const logger = require("../utils/logger");
 const {sendMail} = require("../utils/mail");
 const xss = require("xss");
 
+// 获取商家统计信息
+router.get('/statistic', authInterceptor, async (req, res) => {
+    const userInfo = req.userInfo
+
+    try {
+        const result = await merchantService.getMerchantStatistic(userInfo.uid)
+
+        return res.ok({ statistic: result[0] })
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
 // 获取美食信息列表
 router.get('/food', authInterceptor, async (req, res) => {
     const params = req.getParams()
@@ -36,10 +50,25 @@ router.get('/food', authInterceptor, async (req, res) => {
 
 // 获取商家分类
 router.get('/category', authInterceptor, async (req, res) => {
+    const params = req.getParams()
     const userInfo = req.userInfo
 
     try {
-        const result = await merchantService.getMerchantCategory(userInfo.uid)
+        const result = await merchantService.getMerchantCategory(userInfo.uid, params.page, params.size, params.name)
+
+        return res.ok({ categoryList: result.list, total: result.total, current: parseInt(params.page), size: parseInt(params.size) })
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+// 获取全部商家分类
+router.get('/allcategory', authInterceptor, async (req, res) => {
+    const userInfo = req.userInfo
+
+    try {
+        const result = await merchantService.getAllMerchantCategory(userInfo.uid,)
 
         return res.ok({ categoryList: result })
     } catch (e) {

@@ -22,13 +22,13 @@ const ADMIN_MENU = [
 const MERCHANT_MENU = [
     {
         title: '店铺信息',
-        icon: 'Shop',
+        icon: 'Postcard',
         path: 'info',
         component: 'Info'
     },
     {
         title: '美食管理',
-        icon: 'ShoppingCartFull',
+        icon: 'Dish',
         path: 'food',
         component: 'Food'
     },

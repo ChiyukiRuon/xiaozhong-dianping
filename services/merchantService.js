@@ -3,6 +3,22 @@ const {pool} = require("../utils/db");
 const logger = require("../utils/logger");
 
 /**
+ * 获取商家美食、分类、评价数
+ *
+ * @param {Number} merchant 商家ID
+ * @return {Promise<{ foodCount: Number, categoryCount: Number, commentCount: Number }>} 商家美食、分类、评价数
+ * @author ChiyukiRuon
+ * */
+const getMerchantStatistic = async (merchant) => {
+    const sql = `
+        SELECT 
+            (SELECT COUNT(*) FROM food WHERE merchant = ?) AS food,
+            (SELECT COUNT(*) FROM category WHERE merchant = ?) AS category
+    `
+    return await db.query(sql, [merchant, merchant])
+}
+
+/**
  * 获取商家的美食信息
  *
  * @param {Number} merchant 商家ID
@@ -49,7 +65,7 @@ const getMerchantFood = async (merchant, name = '', category = null, status = nu
 
     const [data, total] = await Promise.all([
         db.query(dataQuery, [merchant, ...params, limit, offset]),
-        db.query(countQuery, [merchant])
+        db.query(countQuery, [merchant, ...params])
     ])
 
     return {
@@ -62,14 +78,67 @@ const getMerchantFood = async (merchant, name = '', category = null, status = nu
  * 获取商家分类
  *
  * @param {Number} merchant 商家ID
- * @return {Promise<{id: Number, merchant: Number, category: String}[]>} 商家分类
+ * @param {Number} [page] 页数
+ * @param {Number} [limit] 每页数量
+ * @param {String} [name] 分类名称
+ * @return {Promise<{ list: Array<{ id: number, name: string, count: number }>, total: number }>} 商家分类
  * @author ChiyukiRuon
  * */
-const getMerchantCategory = async (merchant) => {
-    const sql = 'SELECT * FROM category WHERE merchant = ?'
-    return await db.query(sql, [merchant])
+const getMerchantCategory = async (merchant, page = 1, limit = 10, name = '') => {
+    const offset = (page - 1) * limit
+
+    const baseQuery = `
+        FROM 
+            category c
+        LEFT JOIN 
+            food f ON f.category = c.id AND f.merchant = c.merchant
+        WHERE 
+            c.merchant = ?
+            ${name ? `AND c.category LIKE ?` : ''}
+    `
+    const dataQuery = `
+        SELECT 
+            c.id AS id, 
+            c.category AS name, 
+            COUNT(f.id) AS count
+        ${baseQuery}
+        GROUP BY 
+            c.id
+        LIMIT ? OFFSET ?
+    `
+    const countQuery = `
+        SELECT COUNT(*) AS total
+        ${baseQuery}
+    `
+
+    let params = []
+    if (name) {
+        params.push(`%${name}%`)
+    }
+
+    const [data, total] = await Promise.all([
+        db.query(dataQuery, [merchant, ...params, limit, offset]),
+        db.query(countQuery, [merchant, ...params])
+    ])
+    console.log(data, total)
+
+    return {
+        list: data,
+        total: total[0].total
+    }
 }
 
+/**
+ * 获取商家分类下拉列表
+ *
+ * @param {Number} merchant 商家ID
+ * @return {Promise<Array<{ value: number, label: string }>>} 商家分类下拉列表
+ * @author ChiyukiRuon
+ * */
+const getAllMerchantCategory = async (merchant) => {
+    const sql = 'SELECT c.id AS value, c.category AS label FROM category c WHERE merchant = ?'
+    return await db.query(sql, [merchant])
+}
 
 /**
  * 注册商家
@@ -227,7 +296,7 @@ const addFood = async (foodInfo, uid) => {
     const {
         name,
         intro = null,
-        cover = '',
+        cover = 'http://cdn.dianping.chiyukiruon.top/cover/default.jpg',
         category = null,
         price,
         status
@@ -257,6 +326,8 @@ const editFood = async (foodInfo, uid) => {
         status
     } = foodInfo
 
+    console.log(foodInfo)
+
     let fields = []
     let values = []
 
@@ -275,12 +346,14 @@ const editFood = async (foodInfo, uid) => {
     if (category) {
         fields.push('category = ?')
         values.push(category)
+    } else if (category === null) {
+        fields.push('category = NULL')
     }
     if (price) {
         fields.push('price = ?')
         values.push(price)
     }
-    if (status) {
+    if (status === 0 || status === 1) {
         fields.push('status = ?')
         values.push(status)
     }
@@ -427,8 +500,10 @@ const deleteCategory = async (id, uid) => {
 
 
 module.exports = {
+    getMerchantStatistic,
     getMerchantFood,
     getMerchantCategory,
+    getAllMerchantCategory,
     registerMerchant,
     applyMerchant,
     updateMerchant,
