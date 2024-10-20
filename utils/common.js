@@ -18,7 +18,6 @@ const ADMIN_MENU = [
         component: 'Content'
     }
 ]
-// TODO 待完善
 const MERCHANT_MENU = [
     {
         title: '店铺信息',
@@ -48,13 +47,13 @@ const MERCHANT_MENU = [
 const NORMAL_MENU = [
     {
         title: '个人信息',
-        icon: 'HomeFilled',
+        icon: 'User',
         path: 'info',
         component: 'Info'
     },
     {
         title: '历史评价',
-        icon: 'Menu',
+        icon: 'Tickets',
         path: 'review',
         component: 'Review'
     },
@@ -73,7 +72,7 @@ const getPagePathByRole = (role, status) => {
         case 'admin':
             return '/dashboard'
         case 'normal':
-            return '/'
+            return '/home'
         case 'merchant':
             switch (status) {
                 case 0:
@@ -85,10 +84,10 @@ const getPagePathByRole = (role, status) => {
                 case 5:
                     return '/apply'
                 default:
-                    return '/'
+                    return '/home'
             }
         default:
-            return '/'
+            return '/home'
     }
 }
 

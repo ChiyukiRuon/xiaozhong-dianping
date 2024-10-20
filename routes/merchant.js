@@ -155,7 +155,7 @@ router.post('/info', authInterceptor, async (req, res) => {
     const userInfo = req.userInfo
 
     try {
-        let user = await userService.getUserById(params.uid)
+        let user = await userService.getUserById(userInfo.uid)
 
         if (!user || user[0].role !== 'merchant') {
             return res.error('用户不存在', 404)
@@ -203,9 +203,9 @@ router.post('/info', authInterceptor, async (req, res) => {
             }
         }
 
-        await merchantService.updateMerchant(params)
+        await merchantService.updateMerchant(params, userInfo.uid)
 
-        user = await userService.getUserById(params.uid)
+        user = await userService.getUserById(userInfo.uid)
 
         const { password, ...result } = user[0]
 

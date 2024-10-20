@@ -190,12 +190,12 @@ const applyMerchant = async (merchantInfo) => {
  * 更新商家信息
  *
  * @param {Object} userInfo 用户信息
+ * @param {Number} uid 用户ID
  * @return {Promise<void>}
  * @author ChiyukiRuon
  */
-const updateMerchant = async (userInfo) => {
+const updateMerchant = async (userInfo, uid) => {
     const {
-        uid,
         username,
         password,
         nickname,
