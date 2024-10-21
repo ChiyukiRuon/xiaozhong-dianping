@@ -16,6 +16,12 @@ const ADMIN_MENU = [
         icon: 'Menu',
         path: 'content',
         component: 'Content'
+    },
+    {
+        title: '美食管理',
+        icon: 'Menu',
+        path: 'food',
+        component: 'Food'
     }
 ]
 const MERCHANT_MENU = [

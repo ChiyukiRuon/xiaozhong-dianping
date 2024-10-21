@@ -12,6 +12,176 @@ const getRegionList = async (preCode = 0) => {
     return await db.query(sql, [preCode])
 }
 
+/**
+ * 获取首页美食
+ *
+ * @param {Number} page 页码
+ * @param {Number} limit 每页条数
+ * @return {Promise<{ list: Array, total: Number }>}
+ * */
+const getIndex = async (page = 1, limit = 10) => {
+    const offset = (page - 1) * limit
+
+    const sql = `SELECT * FROM food WHERE status = 1 LIMIT ?,?`
+    const totalSql = `SELECT COUNT(*) as total FROM food WHERE status = 1`
+    const [list, total] = await Promise.all([
+        db.query(sql, [offset, limit]),
+        db.query(totalSql)
+    ])
+    return {
+        list: list.map(({ status, score, ...item }) => (
+            {
+                score: parseFloat(score),
+                ...item
+            })
+        ),
+        total: total[0].total
+    }
+}
+
+/**
+ * 搜索商家
+ *
+ * @param {String} term 关键词
+ * @param {Number} page 页码
+ * @param {Number} limit 每页条数
+ * @return {Promise<{ list: Array, total: Number }>}
+ * @author ChiyukiRuon
+ * */
+const searchMerchant = async (term, page = 1, limit = 10) => {
+    const offset = (page - 1) * limit
+
+    const sql = `SELECT * FROM user WHERE nickname LIKE ? AND role = 'merchant' AND status = 0 LIMIT ?,?`
+    const totalSql = `SELECT COUNT(*) as total FROM user WHERE nickname LIKE ? AND role = 'merchant' AND status = 0`
+    const [list, total] = await Promise.all([
+        db.query(sql, [`%${term}%`, offset, limit]),
+        db.query(totalSql, [`%${term}%`])
+    ])
+
+    return {
+        list: list.map(({ password, permission, status, ...item }) => item),
+        total: total[0].total
+    }
+}
+
+/**
+ * 搜索美食
+ *
+ * @param {String} term 关键词
+ * @param {Number} page 页码
+ * @param {Number} limit 每页条数
+ * @return {Promise<{ list: Array, total: Number }>}
+ * @author ChiyukiRuon
+ * */
+const searchFood = async (term, page = 1, limit = 10) => {
+    const offset = (page - 1) * limit
+
+    const sql = `SELECT * FROM food WHERE name LIKE ? AND status = 1 LIMIT ?,?`
+    const totalSql = `SELECT COUNT(*) as total FROM food WHERE name LIKE ? AND status = 1`
+    const [list, total] = await Promise.all([
+        db.query(sql, [`%${term}%`, offset, limit]),
+        db.query(totalSql, [`%${term}%`])
+    ])
+
+    return {
+        list: list.map(({ status, score, ...item }) => (
+            {
+                score: parseFloat(score),
+                ...item
+            })
+        ),
+        total: total[0].total
+    }
+}
+
+/**
+ * 根据美食ID获取美食详情
+ *
+ * @param {Number} id 美食ID
+ * @return {Promise<Object>}
+ * @author ChiyukiRuon
+ * */
+const getFoodById = async (id) => {
+    const sql = `
+        SELECT 
+            f.*, 
+            u.uid AS uid, 
+            u.nickname AS nickname, 
+            u.avatar AS avatar, 
+            u.intro AS mintro 
+            COUNT(r.id) AS reviewCount
+            COUNT()
+        FROM 
+            food f 
+        LEFT JOIN 
+            user u ON f.merchant = u.uid 
+        LEFT JOIN 
+            review r ON f.merchant = r.merchant_id AND r.parent_id is NULL
+        LEFT JOIN 
+            food f2 ON f2.merchant = f.merchant
+        WHERE 
+            f.id = ? AND f.status = 1
+    `
+
+    const result = await db.query(sql, [id])
+    console.log(result)
+
+    if (result.length !== 0) {
+        const { score, uid, nickname, avatar, mintro, reviewCount, ...foodData } = result[0]
+        return {
+            score: parseFloat(score),
+            ...foodData,
+            merchant: {
+                uid: uid,
+                nickname: nickname,
+                intro: mintro,
+                avatar: avatar,
+                reviewCount: reviewCount
+            }
+        }
+    } else {
+        return {}
+    }
+}
+
+/**
+ * 根据美食ID获取美食评论及其子评论
+ *
+ * @param {Number} id 美食ID
+ * @return {Promise<Array>} 带有嵌套子评论的评论列表
+ * @author ChiyukiRuon
+ */
+const getReviewById = async (id) => {
+    const sql = `SELECT * FROM review WHERE target_id = ?`
+    const comments = await db.query(sql, [id])
+
+    const commentMap = {}
+    comments.forEach(comment => {
+        comment.children = []
+        commentMap[comment.id] = comment
+    })
+
+    const rootComments = []
+    comments.forEach(comment => {
+        if (comment.parent_id) {
+            const parentComment = commentMap[comment.parent_id]
+            if (parentComment) {
+                parentComment.children.push(comment)
+            }
+        } else {
+            rootComments.push(comment)
+        }
+    })
+
+    return rootComments
+}
+
+
 module.exports = {
-    getRegionList
+    getRegionList,
+    getIndex,
+    searchMerchant,
+    searchFood,
+    getFoodById,
+    getReviewById
 }
