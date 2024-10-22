@@ -136,6 +136,7 @@ app.get('/api/search/food', async (req,res) => {
 // 获取美食详情
 app.get('/api/food', async (req, res) => {
     const params = req.getParams()
+
     try {
         const result = await commonService.getFoodById(params.id)
 
@@ -153,6 +154,10 @@ app.get('/api/food', async (req, res) => {
 // 根据美食ID获取评论
 app.get('/api/review', async (req, res) => {
     const params = req.getParams()
+
+    if (!params.id) {
+        return res.error('请输入美食ID', 400)
+    }
 
     try {
         const result = await commonService.getReviewById(params.id)

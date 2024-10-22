@@ -70,13 +70,13 @@ const registerUser = async (username, hashedPassword) => {
 const updateUser = async (userInfo) => {
     const {
         uid,
-        username,
-        password,
-        nickname,
-        avatar,
-        intro,
-        phone,
-        email
+        username = '',
+        password = '',
+        nickname = '',
+        avatar = '',
+        intro = '',
+        phone = '',
+        email = ''
     } = userInfo
 
     const fields = []
@@ -140,28 +140,73 @@ const getReviewById = async (id) => {
  * @param {Number} uid 用户ID
  * @param {Number} page 当前页数，默认为1
  * @param {Number} limit 每页条数，默认为10
- * @return {Promise<Array>}
+ * @return {Promise<{list: Array, total: Number}>}
  * @author ChiyukiRuon
  * */
 const getReviewListByUser = async (uid, page = 1, limit = 10) => {
     const offset = (page - 1) * limit;
 
-    const sql = 'SELECT * FROM review WHERE author_id = ? LIMIT ? OFFSET ?';
-    return await db.query(sql, [uid, limit, offset]);
-};
+    const baseQuery = `
+        FROM review r
+        JOIN food f ON r.target_id = f.id
+        JOIN user u ON r.merchant_id = u.uid
+        WHERE author_id = ?
+    `
 
-/**
- * 获取用户评论总数
- *
- * @param {Number} uid 用户ID
- * @return {Promise<Array>}
- * @author ChiyukiRuon
- * */
-const getReviewCountByUser = async (uid) => {
-    const sql = 'SELECT COUNT(*) as count FROM review WHERE author_id = ?';
-    return await db.query(sql, [uid]);
-};
+    const dataQuery = `
+        SELECT r.*, u.uid, u.username, u.nickname, u.avatar, f.id AS targetId, f.name, f.cover
+        ${baseQuery}
+        LIMIT ? OFFSET ?
+    `
 
+    const countQuery = `
+        SELECT COUNT(*) AS total
+        ${baseQuery}
+    `
+
+    const [data, total] = await Promise.all([
+        db.query(dataQuery, [uid, limit, offset]),
+        db.query(countQuery, [uid])
+    ])
+
+    const formattedData = data.map(item => {
+        const {
+            uid,
+            username,
+            nickname,
+            avatar,
+            targetId,
+            name,
+            cover,
+            author_id,
+            merchant_id,
+            target_id,
+            ...rest
+        } = item
+
+        return {
+            ...rest,
+            score: parseFloat(item.score),
+            anonymity: parseInt(item.anonymity),
+            target: {
+                id: targetId,
+                name,
+                cover
+            },
+            merchant: {
+                uid,
+                username,
+                nickname,
+                avatar
+            }
+        }
+    })
+
+    return {
+        list: formattedData,
+        total: total[0].total
+    }
+};
 
 /**
  * 发布评论
@@ -171,9 +216,10 @@ const getReviewCountByUser = async (uid) => {
  * @author ChiyukiRuon
  * */
 const postReview = async (params) => {
-    const { author, content, anonymity, score, parent, target } = params
-    const sql = 'INSERT INTO review (author_id, content, parent_id, target_id, score, anonymity) VALUES (?, ?, ?, ?, ?, ?)'
-    const result = await db.query(sql, [author, content, parent, target, score, anonymity])
+    const { author, content, anonymity = 0, score, parent = null, target, merchant, annex = '' } = params
+
+    const sql = 'INSERT INTO review (author_id, content, parent_id, target_id, merchant_id, score, annex, anonymity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    const result = await db.query(sql, [author, content, parent, target, merchant, score, annex, anonymity])
 
     return await db.query('SELECT * FROM review WHERE id = ?', [result.insertId])
 }
@@ -219,6 +265,19 @@ const updateReview = async (params) => {
     return await db.query('SELECT * FROM review WHERE id = ?', [params.id])
 }
 
+/**
+ * 根据ID删除评价
+ *
+ * @param {Number} id 评价ID
+ * @param {Number} uid 用户ID
+ * @return {Promise<Array>}
+ * @author ChiyukiRuon
+ * */
+const deleteReviewById = async (id, uid) => {
+    const sql = 'DELETE FROM review WHERE id = ? AND author_id = ?'
+    await db.query(sql, [id, uid])
+}
+
 
 module.exports = {
     searchUsers,
@@ -228,7 +287,7 @@ module.exports = {
     updateUser,
     getReviewById,
     getReviewListByUser,
-    getReviewCountByUser,
     postReview,
-    updateReview
+    updateReview,
+    deleteReviewById
 }

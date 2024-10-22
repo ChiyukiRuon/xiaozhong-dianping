@@ -107,27 +107,20 @@ const getFoodById = async (id) => {
             f.*, 
             u.uid AS uid, 
             u.nickname AS nickname, 
-            u.avatar AS avatar, 
-            u.intro AS mintro 
-            COUNT(r.id) AS reviewCount
-            COUNT()
+            u.avatar AS avatar,
+            u.intro AS mintro
         FROM 
             food f 
-        LEFT JOIN 
+        LEFT JOIN
             user u ON f.merchant = u.uid 
-        LEFT JOIN 
-            review r ON f.merchant = r.merchant_id AND r.parent_id is NULL
-        LEFT JOIN 
-            food f2 ON f2.merchant = f.merchant
         WHERE 
             f.id = ? AND f.status = 1
     `
 
     const result = await db.query(sql, [id])
-    console.log(result)
 
     if (result.length !== 0) {
-        const { score, uid, nickname, avatar, mintro, reviewCount, ...foodData } = result[0]
+        const { score, uid, nickname, avatar, mintro, reviewCount, foodCount, ...foodData } = result[0]
         return {
             score: parseFloat(score),
             ...foodData,
@@ -136,7 +129,8 @@ const getFoodById = async (id) => {
                 nickname: nickname,
                 intro: mintro,
                 avatar: avatar,
-                reviewCount: reviewCount
+                reviewCount: reviewCount,
+                foodCount: foodCount
             }
         }
     } else {
@@ -148,16 +142,42 @@ const getFoodById = async (id) => {
  * 根据美食ID获取美食评论及其子评论
  *
  * @param {Number} id 美食ID
- * @return {Promise<Array>} 带有嵌套子评论的评论列表
+ * @return {Promise<Array>} 带有嵌套子评论的评论列表，包含用户信息
  * @author ChiyukiRuon
  */
 const getReviewById = async (id) => {
-    const sql = `SELECT * FROM review WHERE target_id = ?`
+    const sql = `
+        SELECT 
+            r.*, 
+            u.uid AS uid, 
+            u.avatar AS avatar, 
+            u.username AS username, 
+            u.nickname AS nickname
+        FROM 
+            review r
+        LEFT JOIN 
+            user u ON r.author_id = u.uid
+        WHERE 
+            r.target_id = ?
+    `
+
     const comments = await db.query(sql, [id])
 
     const commentMap = {}
     comments.forEach(comment => {
+        comment.score = parseFloat(comment.score)
         comment.children = []
+        comment.user = {
+            uid: comment.uid,
+            avatar: comment.avatar,
+            username: comment.username,
+            nickname: comment.nickname
+        }
+        delete comment.uid
+        delete comment.avatar
+        delete comment.username
+        delete comment.nickname
+
         commentMap[comment.id] = comment
     })
 
@@ -175,6 +195,7 @@ const getReviewById = async (id) => {
 
     return rootComments
 }
+
 
 
 module.exports = {

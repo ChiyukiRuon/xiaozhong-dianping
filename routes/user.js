@@ -1,8 +1,8 @@
 const express = require('express')
 const router = express.Router()
 const authInterceptor = require('../Interceptors/authInterceptor')
-const {userService} = require("../services");
-const {isPasswordValid, isUsernameValid, isPhoneNumberValid, isImageValid, isNicknameValid} = require("../utils/valid");
+const {userService, foodService} = require("../services");
+const {isPasswordValid, isUsernameValid, isPhoneNumberValid, isImageValid, isNicknameValid, isEmailValid} = require("../utils/valid");
 const logger = require("../utils/logger");
 const {decryptData} = require("../utils/rsa");
 const {hashPassword} = require("../utils/bcrypt");
@@ -11,6 +11,8 @@ const xss = require("xss");
 const {uploadFile} = require("../utils/qiniu");
 const {renameFile} = require("../utils/formatter");
 const {getRoute} = require("../utils/common");
+
+const CDN_PREFIX = process.env.CDN_PERFIX
 
 // 搜索用户
 router.get('/search', async (req, res) => {
@@ -58,7 +60,7 @@ router.get('/available', async (req, res) => {
 router.get('/review', authInterceptor, async (req, res) => {
     const params = req.getParams()
     const userInfo = req.userInfo
-    const user = await userService.getUserById(params.uid)
+    const user = await userService.getUserById(userInfo.uid)
 
     params.page = parseInt(params.page) || 1
     params.size = parseInt(params.size) || Math.min(300, parseInt(params.size))
@@ -66,18 +68,14 @@ router.get('/review', authInterceptor, async (req, res) => {
     if (!user || user.length === 0 || user[0].status !== 0 || user[0].role !== 'normal') {
         return res.error('用户不存在', 404)
     }
-    if (params.uid !== userInfo.uid.toString()) {
-        return res.error('未授权的操作', 403)
-    }
     if (params.page <= 0 || params.size <= 0) {
         return res.error('非法的分页参数', 400)
     }
 
     try {
-        const total = await userService.getReviewCountByUser(params.uid)
-        const reviews = await userService.getReviewListByUser(params.uid, params.page, params.size)
+        const result = await userService.getReviewListByUser(userInfo.uid, params.page, params.size)
 
-        return res.ok({ reviewList: reviews, total: total[0].count, current: params.page, size: params.size }, '获取成功')
+        return res.ok({ reviewList: result.list, total: result.total, current: params.page, size: params.size }, '获取成功')
     } catch (e) {
         logger.error(e)
         return res.error('服务器内部错误', 500)
@@ -119,9 +117,10 @@ router.post('/register', async (req, res) => {
 // 普通用户编辑信息
 router.post('/info', authInterceptor, async (req, res) => {
     const params = req.getParams()
+    const userInfo = req.userInfo
 
     try {
-        let user = await userService.getUserById(params.uid)
+        let user = await userService.getUserById(userInfo.uid)
 
         if (!user || user[0].role !== 'normal') {
             return res.error('用户不存在', 404)
@@ -159,13 +158,14 @@ router.post('/info', authInterceptor, async (req, res) => {
             }
         }
 
+        params.uid = userInfo.uid
         await userService.updateUser(params)
 
-        user = await userService.getUserById(params.uid)
+        user = await userService.getUserById(userInfo.uid)
 
-        const { password, ...userInfo } = user[0]
+        const { password, ...result } = user[0]
 
-        return res.ok(userInfo)
+        return res.ok(result)
     } catch (e) {
         logger.error(e)
         return res.error('服务器内部错误', 500)
@@ -210,6 +210,7 @@ router.post('/review', authInterceptor, async (req, res) => {
 
         try {
             const result = await userService.updateReview(filteredData)
+            if (params.score) await foodService.updateFoodScore(params.id)
 
             return res.ok({ review: result[0] }, '更新成功')
         } catch (e) {
@@ -217,16 +218,16 @@ router.post('/review', authInterceptor, async (req, res) => {
             return res.error('服务器内部错误', 500)
         }
     } else {
-        const filteredData = (({ content, author, target, parent, score, anonymity }) => ({ content, author, target, parent, score, anonymity }))(params)
+        const filteredData = (({ content, target, parent, score, anonymity, merchant, annex }) => ({ content, target, parent, score, anonymity, merchant, annex }))(params)
 
-        if (params.author !== userInfo.uid) {
-            return res.error('未授权的操作', 403)
-        }
-        if (!params.author || !params.target || (!params.parent && !params.score)) {
+        if (!params.target || (!params.parent && !params.score)) {
             return res.error('非法的操作', 400)
         }
         if (!params.content) {
             return res.error('评论内容不能为空', 400)
+        }
+        if (!params.merchant) {
+            return res.error('非法的操作', 400)
         }
 
         params.content = xss(params.content.trim())
@@ -246,9 +247,9 @@ router.post('/review', authInterceptor, async (req, res) => {
             filteredData.parent = null
         }
         if (params.target) {
-            const targetInfo = [{ id: 1, status: 0}]   // TODO 待实现 获取评论目标美食的信息
+            const targetInfo = await foodService.getFoodById(params.target)
 
-            if (!targetInfo || targetInfo.length === 0 || targetInfo[0].status !== 0) {
+            if (!targetInfo || targetInfo.length === 0) {
                 return res.error('美食不存在', 404)
             }
         }
@@ -262,9 +263,21 @@ router.post('/review', authInterceptor, async (req, res) => {
         } else if (!params.anonymity) {
             filteredData.anonymity = 0
         }
+        if (params.merchant) {
+            const merchantInfo = await userService.getUserById(params.merchant)
+
+            if (!merchantInfo || merchantInfo.length === 0 || merchantInfo[0].role !== 'merchant' || merchantInfo[0].status !== 0) {
+                return res.error('未找到商家', 404)
+            }
+        }
+        if (params.annex && !params.annex.startsWith(CDN_PREFIX)) {
+            return res.error('非法的附件', 400)
+        }
 
         try {
+            filteredData.author = userInfo.uid
             const review = await userService.postReview(filteredData)
+            await foodService.updateFoodScore(review[0].target_id)
 
             return res.ok({ review: review[0] }, '发表成功', 201)
         } catch (e) {
@@ -274,10 +287,14 @@ router.post('/review', authInterceptor, async (req, res) => {
     }
 })
 
-// 上传用户头像
-router.put('/avatar', authInterceptor, async (req, res) => {
+// 上传文件
+router.put('/file', authInterceptor, async (req, res) => {
     const file = req.getFile()
+    const params = req.getParams()
 
+    if (!['annex', 'avatar'].includes(params.type) || !params.type) {
+        return res.error('非法的文件类型', 400)
+    }
     if (!file) {
         return res.error('未上传文件', 400)
     }
@@ -292,12 +309,40 @@ router.put('/avatar', authInterceptor, async (req, res) => {
     }
 
     const fileName = renameFile(file[0].name)
-    const result = await uploadFile(file[0].data, `avatar/${fileName}`)
+    const result = await uploadFile(file[0].data, `${params.type}/${fileName}`)
 
     if (result.success) {
-        return res.ok({ url: result.data.key, size: result.data.fsize })
+        return res.ok({ type: params.type, url: result.data.key, size: result.data.fsize })
     } else {
         return res.error('上传失败', 500)
+    }
+})
+
+router.delete('/review', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+    const userInfo = req.userInfo
+
+    if (!params.id) {
+        return res.error('未知参数', 400)
+    }
+
+    const review = await userService.getReviewById(params.id)
+
+    if (!review || review.length === 0) {
+        return res.error('评论不存在', 404)
+    }
+    if (review[0].author_id !== userInfo.uid) {
+        return res.error('非法的操作', 403)
+    }
+
+    try {
+        await userService.deleteReviewById(params.id, userInfo.uid)
+        await foodService.updateFoodScore(review[0].target_id)
+
+        return res.ok({}, '删除成功')
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
     }
 })
 

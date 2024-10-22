@@ -152,9 +152,28 @@ const getFileExtension = (filename) => {
     return filename.split('.').pop().toLowerCase()
 }
 
+/**
+ * 计算分数
+ *
+ * @param {Array} scores 分数列表
+ * @return {Number} 中位数
+ * @author ChiyukiRuon
+ * */
+function calculateMedian(scores) {
+    const sortedScores = scores.slice().sort((a, b) => a - b)
+    const mid = Math.floor(sortedScores.length / 2)
+
+    if (sortedScores.length % 2 === 0) {
+        return (sortedScores[mid - 1] + sortedScores[mid]) / 2
+    } else {
+        return sortedScores[mid]
+    }
+}
+
 module.exports = {
     getPagePathByRole,
     getSidebar,
     getRoute,
     getFileExtension
 }
+

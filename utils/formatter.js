@@ -61,7 +61,7 @@ const renameFile = (filename) => {
     const timestamp = Date.now()
     const randomString = generateRandomName(filename, 8).replace(/\./g, 'c')
     const extension = filename.split('.').pop().toLowerCase()
-    return `${timestamp}-${randomString}.${extension}`
+    return `${timestamp}-${randomString}.${extension}`.replaceAll(' ', '_')
 }
 
 module.exports = {

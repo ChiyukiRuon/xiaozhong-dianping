@@ -13,9 +13,10 @@ const getMerchantStatistic = async (merchant) => {
     const sql = `
         SELECT 
             (SELECT COUNT(*) FROM food WHERE merchant = ?) AS food,
-            (SELECT COUNT(*) FROM category WHERE merchant = ?) AS category
+            (SELECT COUNT(*) FROM category WHERE merchant = ?) AS category,
+            (SELECT COUNT(*) FROM review WHERE merchant_id = ?) AS review
     `
-    return await db.query(sql, [merchant, merchant])
+    return await db.query(sql, [merchant, merchant, merchant])
 }
 
 /**
