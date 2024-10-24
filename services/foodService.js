@@ -12,7 +12,7 @@ const getFoodById = async (id) => {
  * @author ChiyukiRuon
  */
 const updateFoodScore = async (foodId) => {
-    const sql = 'SELECT AVG(score) AS avgScore FROM review WHERE target_id = ?'
+    const sql = 'SELECT AVG(score) AS avgScore FROM review WHERE target_id = ? AND status = 0'
     const result = await db.query(sql, [foodId])
 
     const avgRating = result[0].avgScore

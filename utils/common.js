@@ -14,12 +14,12 @@ const ADMIN_MENU = [
     {
         title: '评论管理',
         icon: 'Menu',
-        path: 'content',
-        component: 'Content'
+        path: 'review',
+        component: 'Review'
     },
     {
         title: '美食管理',
-        icon: 'Menu',
+        icon: 'GoodsFilled',
         path: 'food',
         component: 'Food'
     }

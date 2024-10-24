@@ -218,20 +218,168 @@ const getUnverifiedMerchantList = async (page = 1, limit = 10, username = '', ni
 
 
 /**
- * 获取未审核内容列表
+ * 获取评论列表
  *
  * @param {Number} page 当前页数，默认为1
  * @param {Number} limit 每页条数，默认为10
- * @return {Promise<Array>} 未审核内容列表
+ * @param {String} nickname 搜索关键词
+ * @param {String} food 搜索关键词
+ * @param {String} merchant 搜索关键词
+ * @return {Promise<{list: Array, total: Number}>}
  * @author ChiyukiRuon
  * */
-const getUnverifiedContentList = async (page = 1, limit = 10) => {
+const getReviewList = async (page = 1, limit = 10, nickname = '', food = '', merchant = '') => {
     const offset = (page - 1) * limit
 
-    const sql = ``
+    const conditions = []
+    const params = []
 
-    return await db.query(sql, [limit, offset])
+    // 根据nickname搜索user的uid
+    if (nickname) {
+        conditions.push('(u.nickname LIKE ? AND u.role = "normal")')
+        params.push(`%${nickname}%`)
+    }
+
+    // 根据food名称搜索food的id
+    if (food) {
+        conditions.push('(f.name LIKE ?)')
+        params.push(`%${food}%`)
+    }
+
+    // 根据merchant名称搜索user的uid
+    if (merchant) {
+        conditions.push('(m.nickname LIKE ? AND m.role = "merchant")')
+        params.push(`%${merchant}%`)
+    }
+
+    const baseQuery = `
+        FROM review r
+        LEFT JOIN user u ON r.author_id = u.uid
+        LEFT JOIN food f ON r.target_id = f.id
+        LEFT JOIN user m ON r.merchant_id = m.uid
+    `
+
+    const dataQuery = `
+        SELECT r.*,
+               u.uid AS user_uid, u.username AS user_username, u.nickname AS user_nickname, u.avatar AS user_avatar,
+               m.uid AS merchant_uid, m.username AS merchant_username, m.nickname AS merchant_nickname, m.avatar AS merchant_avatar,
+               f.id AS food_id, f.name AS food_name, f.cover AS food_cover
+        ${baseQuery}
+        WHERE r.status = 0
+        ${conditions.length > 0 ? 'WHERE' : ''} ${conditions.join(' AND ')}
+        LIMIT ? OFFSET ?
+    `
+
+    const countQuery = `
+        SELECT COUNT(*) AS total
+        ${baseQuery}
+        WHERE r.status = 0
+        ${conditions.length > 0 ? 'WHERE' : ''} ${conditions.join(' AND ')}
+    `
+
+    const [ data, total ] = await Promise.all([
+        db.query(dataQuery, [...params, limit, offset]),
+        db.query(countQuery, params)
+    ])
+
+    const formattedData = data.map(item => {
+        const {user_uid, user_username, user_nickname, user_avatar, merchant_uid, merchant_username, merchant_nickname, merchant_avatar, food_id, food_name, food_cover, ...rest} = item
+        return {
+            ...rest,
+            user: {
+                uid: user_uid,
+                username: user_username,
+                nickname: user_nickname,
+                avatar: user_avatar
+            },
+            merchant: {
+                uid: merchant_uid,
+                username: merchant_username,
+                nickname: merchant_nickname,
+                avatar: merchant_avatar
+            },
+            food: {
+                id: food_id,
+                name: food_name,
+                cover: food_cover
+            }
+        }
+    })
+
+    return {
+        list: formattedData,
+        total: total[0].total
+    }
 }
+
+/**
+ * 获取上架的美食列表
+ *
+ * @param {Number} page 当前页数，默认为1
+ * @param {Number} limit 每页条数，默认为10
+ * @param {String} food 搜索关键词
+ * @param {String} merchant 搜索关键词
+ * @return {Promise<{list: Array, total: Number}>}
+ * @author ChiyukiRuon
+ */
+const getFoodList = async (page = 1, limit = 10, food = '', merchant = '') => {
+    const offset = (page - 1) * limit
+
+    const conditions = ['f.status = 1']
+    const params = []
+
+    if (merchant) {
+        conditions.push('(u.nickname LIKE ?)')
+        params.push(`%${merchant}%`)
+    }
+    if (food) {
+        conditions.push('(f.name LIKE ?)')
+        params.push(`%${food}%`)
+    }
+
+    const baseQuery = `
+        FROM food f
+        LEFT JOIN user u ON f.merchant = u.uid
+    `
+
+    const dataQuery = `
+        SELECT f.*, 
+               u.uid AS merchant_uid, u.username AS merchant_username, u.nickname AS merchant_nickname, u.avatar AS merchant_avatar
+        ${baseQuery}
+        WHERE ${conditions.join(' AND ')}
+        LIMIT ? OFFSET ?
+    `
+
+    const countQuery = `
+        SELECT COUNT(*) AS total
+        ${baseQuery}
+        WHERE ${conditions.join(' AND ')}
+    `
+
+    const [data, total] = await Promise.all([
+        db.query(dataQuery, [...params, limit, offset]),
+        db.query(countQuery, params)
+    ])
+
+    const formattedData = data.map(item => {
+        const {merchant_uid, merchant_username, merchant_nickname, merchant_avatar, category, status, ...rest} = item
+        return {
+            ...rest,
+            merchant: {
+                uid: merchant_uid,
+                username: merchant_username,
+                nickname: merchant_nickname,
+                avatar: merchant_avatar
+            }
+        }
+    })
+
+    return {
+        list: formattedData,
+        total: total[0].total
+    }
+}
+
 
 /**
  * 根据记录ID获取未审核信息
@@ -376,6 +524,32 @@ const banUser = async (uid, type) => {
     }
 }
 
+/**
+ * 删除评价
+ *
+ * @param {Number} id 评价ID
+ * @param {String} remark 删除原因
+ * @return {Promise<boolean>} 删除结果
+ * @author ChiyukiRuon
+ * */
+const deleteReviewById = async (id, remark) => {
+    const sql = 'UPDATE review SET status = 2, remark = ? WHERE id = ?'
+    return await db.query(sql, [remark, id])
+}
+
+/**
+ * 下架商品
+ *
+ * @param {Number} id 商品ID
+ * @param {String} remark 下架原因
+ * @return {Promise<boolean>} 下架结果
+ * @author ChiyukiRuon
+ * */
+const deleteFoodById = async (id, remark) => {
+    const sql = 'UPDATE food SET status = 0, remark = ? WHERE id = ?'
+    return await db.query(sql, [remark, id])
+}
+
 module.exports = {
     getPermissionList,
     getAdminById,
@@ -384,9 +558,12 @@ module.exports = {
     addAdmin,
     getUnverifiedUserList,
     getUnverifiedMerchantList,
-    getUnverifiedContentList,
+    getReviewList,
+    getFoodList,
     getUnverifiedUserById,
     verifyUser,
     verifyMerchant,
-    banUser
+    banUser,
+    deleteReviewById,
+    deleteFoodById
 }

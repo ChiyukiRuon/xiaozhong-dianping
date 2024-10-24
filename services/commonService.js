@@ -40,6 +40,17 @@ const getIndex = async (page = 1, limit = 10) => {
 }
 
 /**
+ * 获取排行榜
+ *
+ * @return {Promise<Array>}
+ * @author ChiyukiRuon
+ * */
+const getRank = async () => {
+    const sql = `SELECT * FROM food WHERE status = 1 ORDER BY score DESC LIMIT 10`
+    return await db.query(sql)
+}
+
+/**
  * 搜索商家
  *
  * @param {String} term 关键词
@@ -158,7 +169,7 @@ const getReviewById = async (id) => {
         LEFT JOIN 
             user u ON r.author_id = u.uid
         WHERE 
-            r.target_id = ?
+            r.target_id = ? AND r.status = 0
     `
 
     const comments = await db.query(sql, [id])
@@ -201,6 +212,7 @@ const getReviewById = async (id) => {
 module.exports = {
     getRegionList,
     getIndex,
+    getRank,
     searchMerchant,
     searchFood,
     getFoodById,

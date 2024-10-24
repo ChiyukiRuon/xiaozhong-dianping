@@ -60,19 +60,20 @@ router.get('/available', async (req, res) => {
 router.get('/review', authInterceptor, async (req, res) => {
     const params = req.getParams()
     const userInfo = req.userInfo
-    const user = await userService.getUserById(userInfo.uid)
-
-    params.page = parseInt(params.page) || 1
-    params.size = parseInt(params.size) || Math.min(300, parseInt(params.size))
-
-    if (!user || user.length === 0 || user[0].status !== 0 || user[0].role !== 'normal') {
-        return res.error('用户不存在', 404)
-    }
-    if (params.page <= 0 || params.size <= 0) {
-        return res.error('非法的分页参数', 400)
-    }
 
     try {
+        const user = await userService.getUserById(userInfo.uid)
+
+        params.page = parseInt(params.page) || 1
+        params.size = parseInt(params.size) || Math.min(300, parseInt(params.size))
+
+        if (!user || user.length === 0 || user[0].status !== 0 || user[0].role !== 'normal') {
+            return res.error('用户不存在', 404)
+        }
+        if (params.page <= 0 || params.size <= 0) {
+            return res.error('非法的分页参数', 400)
+        }
+
         const result = await userService.getReviewListByUser(userInfo.uid, params.page, params.size)
 
         return res.ok({ reviewList: result.list, total: result.total, current: params.page, size: params.size }, '获取成功')

@@ -154,7 +154,7 @@ const getReviewListByUser = async (uid, page = 1, limit = 10) => {
     `
 
     const dataQuery = `
-        SELECT r.*, u.uid, u.username, u.nickname, u.avatar, f.id AS targetId, f.name, f.cover
+        SELECT r.*, u.uid, u.username, u.nickname, u.avatar, f.id AS targetId, f.name, f.cover, f.score AS foodScore
         ${baseQuery}
         LIMIT ? OFFSET ?
     `
@@ -178,6 +178,7 @@ const getReviewListByUser = async (uid, page = 1, limit = 10) => {
             targetId,
             name,
             cover,
+            foodScore,
             author_id,
             merchant_id,
             target_id,
@@ -191,7 +192,8 @@ const getReviewListByUser = async (uid, page = 1, limit = 10) => {
             target: {
                 id: targetId,
                 name,
-                cover
+                cover,
+                score: foodScore
             },
             merchant: {
                 uid,

@@ -4,7 +4,7 @@ const app = express()
 const fs = require('fs')
 const route = require('./routes')
 const requestInterceptor = require('./Interceptors/requestInterceptor')    // 引入请求拦截器
-const { userService, commonService} = require('./services')
+const { userService, commonService, merchantService} = require('./services')
 const logger = require('./utils/logger')
 const generateKeyPair = require('./utils/rsa')
 const {decryptData} = require("./utils/rsa");
@@ -87,6 +87,34 @@ app.get('/api/index', async (req, res) => {
         const result = await commonService.getIndex(params.page, params.size)
 
         return res.ok({ list: result.list, total: result.total, current: params.page, size: params.size })
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+// 获取排行榜
+app.get('/api/rank', async (req, res) => {
+    try {
+        const result = await commonService.getRank()
+        return res.ok({ rank: result })
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+// 获取商家统计信息
+app.get('/api/statistic', async (req, res) => {
+    const params = req.getParams()
+
+    if (!params.uid) {
+        return res.error('参数不完整', 400)
+    }
+
+    try {
+        const result = await merchantService.getMerchantStatistic(params.uid)
+        return res.ok({ foodCount: result[0].food, reviewCount: result[0].review })
     } catch (e) {
         logger.error(e)
         return res.error('服务器内部错误', 500)

@@ -130,6 +130,73 @@ const getMerchantCategory = async (merchant, page = 1, limit = 10, name = '') =>
 }
 
 /**
+ * 获取商家评价
+ *
+ * @param {Number} merchant 商家ID
+ * @param {Number} [page] 页数
+ * @param {Number} [limit] 每页数量
+ * @param {Number} [food] 美食ID
+ * @return {Promise<{ list: Array<{ id: number, content: string, score: number, create_time: Date }>, total: number }>} 商家评价
+ * */
+const getMerchantReview = async (merchant, page = 1, limit = 10, food = '') => {
+    const offset = (page - 1) * limit
+
+    const baseQuery = `
+        FROM review r
+        LEFT JOIN user u ON r.author_id = u.uid
+        LEFT JOIN food f ON r.target_id = f.id
+        WHERE merchant_id = ?
+        ${food ? 'AND target_id = ?' : ''}
+    `
+
+    const dataQuery = `
+        SELECT r.*,
+               u.uid AS user_uid, u.username AS user_username, u.nickname AS user_nickname, u.avatar AS user_avatar,
+               f.id AS food_id, f.name AS food_name, f.cover AS food_cover
+        ${baseQuery}
+        LIMIT ? OFFSET ?
+    `
+
+    const countQuery = `
+        SELECT COUNT(*) AS total
+        ${baseQuery}
+    `
+
+    let params = []
+    if (food) {
+        params.push(food)
+    }
+
+    const [data, total] = await Promise.all([
+        db.query(dataQuery, [merchant, ...params, limit, offset]),
+        db.query(countQuery, [merchant, ...params])
+    ])
+
+    const formattedData = data.map(item => {
+        const {user_uid, user_username, user_nickname, user_avatar, merchant_uid, merchant_username, merchant_nickname, merchant_avatar, food_id, food_name, food_cover, ...rest} = item
+        return {
+            ...rest,
+            user: {
+                uid: user_uid,
+                username: user_username,
+                nickname: user_nickname,
+                avatar: user_avatar
+            },
+            food: {
+                id: food_id,
+                name: food_name,
+                cover: food_cover
+            }
+        }
+    })
+
+    return {
+        list: formattedData,
+        total: total[0].total
+    }
+}
+
+/**
  * 获取商家分类下拉列表
  *
  * @param {Number} merchant 商家ID
@@ -138,6 +205,18 @@ const getMerchantCategory = async (merchant, page = 1, limit = 10, name = '') =>
  * */
 const getAllMerchantCategory = async (merchant) => {
     const sql = 'SELECT c.id AS value, c.category AS label FROM category c WHERE merchant = ?'
+    return await db.query(sql, [merchant])
+}
+
+/**
+ * 获取商家美食下拉列表
+ *
+ * @param {Number} merchant 商家ID
+ * @return {Promise<Array<{ value: number, label: string }>>} 商家美食下拉列表
+ * @author ChiyukiRuon
+ * */
+const getAllMerchantFood = async (merchant) => {
+    const sql = 'SELECT id AS value, name AS label FROM food WHERE merchant = ?'
     return await db.query(sql, [merchant])
 }
 
@@ -514,7 +593,9 @@ module.exports = {
     editFood,
     deleteFood,
     getCategoryById,
+    getMerchantReview,
     getAllCategoryByMerchant,
+    getAllMerchantFood,
     getCategoryByMerchantAndCategory,
     addCategory,
     editCategory,

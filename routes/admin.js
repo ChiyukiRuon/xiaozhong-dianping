@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const authInterceptor = require('../Interceptors/authInterceptor')
-const {adminService, userService} = require("../services");
+const {adminService, userService, foodService} = require("../services");
 const logger = require("../utils/logger");
 const formatter = require("../utils/formatter")
 const {isUsernameValid, isPasswordValid} = require("../utils/valid");
@@ -111,8 +111,8 @@ router.get('/verify/merchant', authInterceptor, async (req, res) => {
     }
 })
 
-// TODO 获取未审核的内容列表
-router.get('/verify/content', authInterceptor, async (req, res) => {
+// 获取评论列表
+router.get('/review', authInterceptor, async (req, res) => {
     let params = req.getParams()
     const userInfo = req.userInfo
 
@@ -128,10 +128,30 @@ router.get('/verify/content', authInterceptor, async (req, res) => {
     }
 
     try {
-        const contentList = await adminService.getUnverifiedContentList(params.page, params.size)
-        const total = contentList.length
+        const result = await adminService.getReviewList(params.page, params.size, params.nickname, params.food, params.merchant)
 
-        return res.ok({ contentList: contentList, total: total, current: params.page, size: params.size })
+        return res.ok({ reviewList: result.list, total: result.total, current: params.page, size: params.size }, '获取成功')
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+// 获取上架的美食
+router.get('/food', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+
+    params.page = parseInt(params.page) || 1
+    params.size = parseInt(params.size) || Math.min(300, parseInt(params.size))
+
+    if (params.page <= 0 || params.size <= 0) {
+        return res.error('非法的分页参数', 400)
+    }
+
+    try {
+        const result = await adminService.getFoodList(params.page, params.size, params.food, params.merchant)
+
+        return res.ok({ foodList:result.list, total: result.total, current: params.page,})
     } catch (e) {
         logger.error(e)
         return res.error('服务器内部错误', 500)
@@ -381,6 +401,62 @@ router.post('/user/ban', authInterceptor, async (req, res) => {
             return res.ok({}, '操作成功')
         } else {
             return res.error('服务器内部错误', 500)
+        }
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+// 删除评价
+router.delete('/review', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+
+    if (!params.id) {
+        return res.error('参数不正确', 400)
+    }
+    if (!params.remark) {
+        return res.error('未填写删除原因', 400)
+    }
+
+    try {
+        const result = await adminService.deleteReviewById(params.id, params.remark)
+
+        if (result.changedRows === 0) {
+            if (result.info.includes("Rows matched: 0")) {
+                return res.error('评价不存在', 404)
+            }
+            return res.error('删除失败', 500)
+        } {
+            await foodService.updateFoodScore(params.food)
+            return res.ok({}, '操作成功')
+        }
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+// 下架商品
+router.delete('/food', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+
+    if (!params.id) {
+        return res.error('参数不正确', 400)
+    }
+    if (!params.remark) {
+        return res.error('未填写删除原因', 400)
+    }
+    try {
+        const result = await adminService.deleteFoodById(params.id, params.remark)
+
+        if (result.changedRows === 0) {
+            if (result.info.includes("Rows matched: 0")) {
+                return res.error('美食不存在', 404)
+            }
+            return res.error('下架失败', 500)
+        } else {
+            return res.ok({}, '操作成功')
         }
     } catch (e) {
         logger.error(e)
