@@ -234,19 +234,16 @@ const getReviewList = async (page = 1, limit = 10, nickname = '', food = '', mer
     const conditions = []
     const params = []
 
-    // 根据nickname搜索user的uid
     if (nickname) {
         conditions.push('(u.nickname LIKE ? AND u.role = "normal")')
         params.push(`%${nickname}%`)
     }
 
-    // 根据food名称搜索food的id
     if (food) {
         conditions.push('(f.name LIKE ?)')
         params.push(`%${food}%`)
     }
 
-    // 根据merchant名称搜索user的uid
     if (merchant) {
         conditions.push('(m.nickname LIKE ? AND m.role = "merchant")')
         params.push(`%${merchant}%`)

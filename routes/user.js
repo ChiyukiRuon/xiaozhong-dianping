@@ -74,7 +74,7 @@ router.get('/review', authInterceptor, async (req, res) => {
             return res.error('非法的分页参数', 400)
         }
 
-        const result = await userService.getReviewListByUser(userInfo.uid, params.page, params.size)
+        const result = await userService.getReviewListByUser(userInfo.uid, params.page, params.size, params.content, params.food, params.merchant, params.status)
 
         return res.ok({ reviewList: result.list, total: result.total, current: params.page, size: params.size }, '获取成功')
     } catch (e) {

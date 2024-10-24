@@ -138,23 +138,53 @@ const getReviewById = async (id) => {
  * 获取用户评论列表
  *
  * @param {Number} uid 用户ID
- * @param {Number} page 当前页数，默认为1
- * @param {Number} limit 每页条数，默认为10
+ * @param {Number} [page] 当前页数，默认为1
+ * @param {Number} [limit] 每页条数，默认为10
+ * @param {String} [content] 评论内容
+ * @param {String} [food] 评论目标美食名称
+ * @param {String} [merchant] 评论目标商家名称
+ * @param {Number} [status] 评论状态
  * @return {Promise<{list: Array, total: Number}>}
  * @author ChiyukiRuon
  * */
-const getReviewListByUser = async (uid, page = 1, limit = 10) => {
+const getReviewListByUser = async (uid, page = 1, limit = 10, content = '', food = '', merchant = '', status = null) => {
     const offset = (page - 1) * limit;
+
+    const conditions = []
+    const params = []
+
+    if (content) {
+        conditions.push('(r.content LIKE ?)')
+        params.push(`%${content}%`)
+    }
+
+    if (food) {
+        conditions.push('(f.name LIKE ?)')
+        params.push(`%${food}%`)
+    }
+
+    if (merchant) {
+        conditions.push('(m.nickname LIKE ? AND m.role = "normal")')
+        params.push(`%${merchant}%`)
+    }
+
+    if (status >= 0 && status <= 2 && status !== null) {
+        conditions.push('(r.status = ?)')
+        params.push(status)
+    }
 
     const baseQuery = `
         FROM review r
         JOIN food f ON r.target_id = f.id
-        JOIN user u ON r.merchant_id = u.uid
+        JOIN user m ON r.merchant_id = m.uid
         WHERE author_id = ?
+        ${conditions.length > 0 ? 'AND' : ''} ${conditions.join(' AND ')}
     `
 
     const dataQuery = `
-        SELECT r.*, u.uid, u.username, u.nickname, u.avatar, f.id AS targetId, f.name, f.cover, f.score AS foodScore
+        SELECT r.*, 
+               m.uid, m.username, m.nickname, m.avatar,
+               f.id AS targetId, f.name, f.cover, f.score AS foodScore
         ${baseQuery}
         LIMIT ? OFFSET ?
     `
@@ -165,8 +195,8 @@ const getReviewListByUser = async (uid, page = 1, limit = 10) => {
     `
 
     const [data, total] = await Promise.all([
-        db.query(dataQuery, [uid, limit, offset]),
-        db.query(countQuery, [uid])
+        db.query(dataQuery, [uid, ...params, limit, offset]),
+        db.query(countQuery, [uid, ...params])
     ])
 
     const formattedData = data.map(item => {
