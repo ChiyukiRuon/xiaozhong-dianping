@@ -3,6 +3,25 @@ const {pool} = require("../utils/db");
 const logger = require("../utils/logger");
 
 /**
+ * 根据UID获取商家信息
+ *
+ * @param {Number} uid 用户ID
+ * @return {Promise<Array>} 用户信息
+ * @author ChiyukiRuon
+ * */
+const getMerchantByUid = async (uid) => {
+    const sql = 'SELECT * FROM user WHERE uid = ? AND role = "merchant"'
+    const result =  await db.query(sql, [uid])
+
+    return result.map(item => {
+        const {password, permission, role, status, ...rest} = item
+        return {
+            ...rest,
+        }
+    })
+}
+
+/**
  * 获取商家美食、分类、评价数
  *
  * @param {Number} merchant 商家ID
@@ -12,9 +31,9 @@ const logger = require("../utils/logger");
 const getMerchantStatistic = async (merchant) => {
     const sql = `
         SELECT 
-            (SELECT COUNT(*) FROM food WHERE merchant = ?) AS food,
+            (SELECT COUNT(*) FROM food WHERE merchant = ? AND status = 1) AS food,
             (SELECT COUNT(*) FROM category WHERE merchant = ?) AS category,
-            (SELECT COUNT(*) FROM review WHERE merchant_id = ?) AS review
+            (SELECT COUNT(*) FROM review WHERE merchant_id = ? AND status = 0) AS review
     `
     return await db.query(sql, [merchant, merchant, merchant])
 }
@@ -145,7 +164,7 @@ const getMerchantReview = async (merchant, page = 1, limit = 10, food = '') => {
         FROM review r
         LEFT JOIN user u ON r.author_id = u.uid
         LEFT JOIN food f ON r.target_id = f.id
-        WHERE merchant_id = ?
+        WHERE merchant_id = ? AND r.status = 0
         ${food ? 'AND target_id = ?' : ''}
     `
 
@@ -580,6 +599,7 @@ const deleteCategory = async (id, uid) => {
 
 
 module.exports = {
+    getMerchantByUid,
     getMerchantStatistic,
     getMerchantFood,
     getMerchantCategory,

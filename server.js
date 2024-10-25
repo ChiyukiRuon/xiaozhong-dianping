@@ -4,7 +4,7 @@ const app = express()
 const fs = require('fs')
 const route = require('./routes')
 const requestInterceptor = require('./Interceptors/requestInterceptor')    // 引入请求拦截器
-const { userService, commonService, merchantService} = require('./services')
+const { userService, commonService, merchantService, foodService} = require('./services')
 const logger = require('./utils/logger')
 const generateKeyPair = require('./utils/rsa')
 const {decryptData} = require("./utils/rsa");
@@ -115,6 +115,64 @@ app.get('/api/statistic', async (req, res) => {
     try {
         const result = await merchantService.getMerchantStatistic(params.uid)
         return res.ok({ foodCount: result[0].food, reviewCount: result[0].review })
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+// 根据UID获取商家信息
+app.get('/api/merchant', authInterceptor, async (req, res) => {
+    const params = req.getParams()
+
+    if (!params.uid) {
+        return res.error('参数不完整', 400)
+    }
+
+    try {
+        const merchant = await merchantService.getMerchantByUid(params.uid)
+
+        if (merchant.length === 0) {
+            return res.error('商家不存在', 404)
+        }
+
+        return res.ok(merchant[0])
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+// 获取商家的所有美食
+app.get('/api/allfood', async (req, res) => {
+    const params = req.getParams()
+
+    if (!params.uid) {
+        return res.error('参数不完整', 400)
+    }
+
+    try {
+        const food = await foodService.getMerchantAllFood(params.uid)
+
+        return res.ok({ food: food })
+    } catch (e) {
+        logger.error(e)
+        return res.error('服务器内部错误', 500)
+    }
+})
+
+// 获取商家分类
+app.get('/api/category', async (req, res) => {
+    const params = req.getParams()
+
+    if (!params.uid) {
+        return res.error('参数不完整', 400)
+    }
+
+    try {
+        const category = await merchantService.getAllMerchantCategory(params.uid)
+
+        return res.ok({ category: category })
     } catch (e) {
         logger.error(e)
         return res.error('服务器内部错误', 500)

@@ -17,12 +17,38 @@ const updateFoodScore = async (foodId) => {
 
     const avgRating = result[0].avgScore
 
-    // 更新 food 表中的评分字段
     const updateSql = 'UPDATE food SET score = ? WHERE id = ?'
     await db.query(updateSql, [avgRating, foodId])
 }
 
+/**
+ * @param {Number} uid 商家ID
+ * @return {Promise<Array>} 商家所有食品，包含类别信息
+ * @author ChiyukiRuon
+ * */
+const getMerchantAllFood = async (uid) => {
+    const query = `
+        SELECT f.*, 
+               c.category AS categoryName 
+        FROM food f
+        JOIN category c ON f.category = c.id
+        WHERE f.merchant = ? AND f.status = 1
+    `
+
+    const result = await db.query(query, [uid])
+
+    return result.map(item => {
+        const {score, price, remark, status, ...rest} = item
+        return {
+            ...rest,
+            price: parseFloat(price),
+            score: parseFloat(score),
+        }
+    })
+}
+
 module.exports = {
     getFoodById,
-    updateFoodScore
+    updateFoodScore,
+    getMerchantAllFood
 }
