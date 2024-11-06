@@ -260,15 +260,15 @@ const registerMerchant = async (username, hashedPassword) => {
  * @author ChiyukiRuon
  * */
 const applyMerchant = async (merchantInfo) => {
-    const {uid, nickname, avatar, phone, email, address, annex } = merchantInfo
+    const {uid, nickname, avatar, intro, phone, email, address, annex } = merchantInfo
 
     const connection = await pool.getConnection()
 
     try {
         await connection.beginTransaction()
 
-        const sql1 = 'UPDATE user SET nickname = ?, avatar = ?, phone = ?, email = ?, address = ?, annex = ? status = 1 WHERE uid = ?'
-        await db.query(sql1, [nickname, avatar, phone, email, address, annex, uid])
+        const sql1 = 'UPDATE user SET nickname = ?, avatar = ?, intro = ?, phone = ?, email = ?, address = ?, annex = ?, status = 1 WHERE uid = ?'
+        await db.query(sql1, [nickname, avatar, intro, phone, email, address, annex, uid])
 
         const sql2 = 'INSERT INTO verification (type, detail, source_id, status, annex) VALUES ("merchant", "register", ?, 2, ?)'
         await connection.query(sql2, [uid, annex])
@@ -400,6 +400,8 @@ const addFood = async (foodInfo, uid) => {
         price,
         status
     } = foodInfo
+
+    console.log(foodInfo)
 
     const sql = `INSERT INTO food (merchant, name, intro, cover, category, price, status) VALUES (?, ?, ?, ?, ?, ?, ?)`
     const result = await db.query(sql, [uid, name, intro, cover, category, price, status])

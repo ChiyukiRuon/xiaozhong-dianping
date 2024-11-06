@@ -341,7 +341,7 @@ router.post('/food', authInterceptor, async (req, res) => {
             }
             if (params.category) {
                 const categoryList = await merchantService.getAllCategoryByMerchant(userInfo.uid)
-                const exists = categoryList.some(item => item.category === params.category)
+                const exists = categoryList.some(item => item.id === params.category)
                 if (!exists) return res.error('不存在的美食类别', 400)
             }
             if (params.status && (params.status !== 0 || params.status !== 1)) {

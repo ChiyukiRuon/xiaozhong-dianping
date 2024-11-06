@@ -1,10 +1,10 @@
 const ADMIN_MENU = [
-    {
-        title: '用户管理',
-        icon: 'UserFilled',
-        path: 'user',
-        component: 'User'
-    },
+    // {
+    //     title: '用户管理',
+    //     icon: 'UserFilled',
+    //     path: 'user',
+    //     component: 'User'
+    // },
     {
         title: '商家管理',
         icon: 'Shop',

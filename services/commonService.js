@@ -46,7 +46,7 @@ const getIndex = async (page = 1, limit = 10) => {
  * @author ChiyukiRuon
  * */
 const getRank = async () => {
-    const sql = `SELECT * FROM food WHERE status = 1 ORDER BY score DESC LIMIT 10`
+    const sql = `SELECT * FROM food WHERE status = 1 AND score != 0 ORDER BY score DESC LIMIT 10`
     return await db.query(sql)
 }
 

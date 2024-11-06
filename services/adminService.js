@@ -464,7 +464,7 @@ const verifyMerchant = async (id, approve, info) => {
             fields.push('intro = ?')
             values.push(intro)
         }
-        if (status) {
+        if (status === 0 || status === 1) {
             fields.push('status = ?')
             values.push(status)
         }
