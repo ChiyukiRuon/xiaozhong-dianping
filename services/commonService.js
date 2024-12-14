@@ -22,7 +22,7 @@ const getRegionList = async (preCode = 0) => {
 const getIndex = async (page = 1, limit = 10) => {
     const offset = (page - 1) * limit
 
-    const sql = `SELECT * FROM food WHERE status = 1 LIMIT ?,?`
+    const sql = `SELECT * FROM food WHERE status = 1 ORDER BY RAND() LIMIT ?,?`
     const totalSql = `SELECT COUNT(*) as total FROM food WHERE status = 1`
     const [list, total] = await Promise.all([
         db.query(sql, [offset, limit]),

@@ -263,7 +263,7 @@ const getReviewList = async (page = 1, limit = 10, nickname = '', food = '', mer
                f.id AS food_id, f.name AS food_name, f.cover AS food_cover
         ${baseQuery}
         WHERE r.status = 0
-        ${conditions.length > 0 ? 'WHERE' : ''} ${conditions.join(' AND ')}
+        ${conditions.length > 0 ? 'AND' : ''} ${conditions.join(' AND ')}
         LIMIT ? OFFSET ?
     `
 
@@ -271,7 +271,7 @@ const getReviewList = async (page = 1, limit = 10, nickname = '', food = '', mer
         SELECT COUNT(*) AS total
         ${baseQuery}
         WHERE r.status = 0
-        ${conditions.length > 0 ? 'WHERE' : ''} ${conditions.join(' AND ')}
+        ${conditions.length > 0 ? 'AND' : ''} ${conditions.join(' AND ')}
     `
 
     const [ data, total ] = await Promise.all([

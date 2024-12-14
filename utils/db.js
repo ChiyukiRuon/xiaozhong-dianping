@@ -9,7 +9,8 @@ const dbConfig = {
     database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 200,
-    queueLimit: 0
+    queueLimit: 0,
+    enableKeepAlive: true
 }
 
 // 创建连接池
