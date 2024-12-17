@@ -31,8 +31,8 @@ const isNicknameValid = (nickname) => {
  * @returns {boolean} 返回 true 表示密码合法，false 表示不合法
  */
 const isPasswordValid = (password) => {
-    // 密码长度应在 3 到 20 个字符之间，且包含至少一个大写字母、一个小写字母、一个数字和一个特殊字符
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/
+    // 密码长度应在 4 到 20 个字符之间，且包含至少一个大写字母、一个小写字母、一个数字和一个特殊字符
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{4,20}$/
     return passwordRegex.test(password)
 }
 

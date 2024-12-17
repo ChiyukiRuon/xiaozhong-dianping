@@ -436,7 +436,7 @@ const verifyMerchant = async (id, approve, info) => {
         try {
             await connection.beginTransaction()
 
-            const sql1 = 'UPDATE user SET status = 4 WHERE uid = ?'
+            const sql1 = 'UPDATE user SET status = 5 WHERE uid = ?'
             await connection.query(sql1, [uid])
 
             const sql2 = 'UPDATE verification SET status = 3 WHERE source_id = ? AND type = "merchant"'

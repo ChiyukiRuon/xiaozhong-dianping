@@ -268,7 +268,7 @@ app.post('/api/auth', async (req, res) => {
             return res.error('请输入用户名和密码', 400)
         } else if (user.length !== 1 || !await comparePassword(plainPassword, user[0].password)) {
             return res.error('用户名或密码错误', 400)
-        } else if (user[0].status >= 2 || user[0].status === 3) {
+        } else if (user[0].status === 2 || user[0].status === 3) {
             return res.error('账户不可用', 403)
         } else {
             const { password, ...userInfo } = user[0]
