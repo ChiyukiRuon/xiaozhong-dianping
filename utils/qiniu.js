@@ -1,5 +1,7 @@
 const qiniu = require('qiniu');
 const logger = require('./logger');
+const dotenv = require('dotenv')
+dotenv.config()
 
 const bucket = process.env.QINIU_BUCKET;
 const accessKey = process.env.QINIU_AK;

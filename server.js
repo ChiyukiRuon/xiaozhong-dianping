@@ -13,6 +13,8 @@ const jwt = require("./utils/jwt");
 const {getRoute} = require("./utils/common");
 const authInterceptor = require("./Interceptors/authInterceptor");
 const cors = require('cors');
+const dotenv = require('dotenv')
+dotenv.config()
 
 const PORT = process.env.PORT || 3000
 

@@ -1,5 +1,7 @@
 const mysql = require('mysql2/promise')
 const logger = require('./logger')
+const dotenv = require('dotenv')
+dotenv.config()
 
 const dbConfig = {
     host: process.env.DB_HOST,
